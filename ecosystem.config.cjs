@@ -11,7 +11,7 @@ module.exports = {
       max_memory_restart: '300M',
       env: {
         NODE_ENV: 'production',
-        PORT: 5000,
+        PORT: 3001,
       },
       error_file: '/var/log/incubator/error.log',
       out_file: '/var/log/incubator/out.log',
