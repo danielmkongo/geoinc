@@ -1,0 +1,95 @@
+import express from 'express';
+import db from '../db/connection.js';
+import { mqttService } from '../server.js';
+
+const router = express.Router();
+
+// Send actuator command
+router.post('/send/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { heater, humidifier, linear_actuator } = req.body;
+
+    // Validate input
+    if (heater === undefined || humidifier === undefined || linear_actuator === undefined) {
+      return res.status(400).json({ error: 'All actuator states required' });
+    }
+
+    const commandId = `cmd_${Date.now()}`;
+
+    // Store command in database
+    await db.query(
+      `INSERT INTO command_logs (id, device_id, command_type, command_payload, status, sent_at)
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        commandId,
+        deviceId,
+        'toggle_actuators',
+        JSON.stringify({ heater, humidifier, linear_actuator }),
+        'pending'
+      ]
+    );
+
+    // Publish to MQTT (import from server)
+    try {
+      const { mqttService } = await import('../server.js');
+      await mqttService.publishCommand(deviceId, {
+        heater,
+        humidifier,
+        linear_actuator
+      });
+
+      // Update command status to success
+      await db.query(
+        'UPDATE command_logs SET status = ?, acknowledged_at = CURRENT_TIMESTAMP WHERE id = ?',
+        ['success', commandId]
+      );
+
+      res.json({
+        status: 'success',
+        message: 'Command published to MQTT',
+        commandId,
+        timestamp: new Date()
+      });
+    } catch (mqttError) {
+      // Update command status to failed
+      await db.query(
+        'UPDATE command_logs SET status = ?, error_message = ?, acknowledged_at = CURRENT_TIMESTAMP WHERE id = ?',
+        ['failed', mqttError.message, commandId]
+      );
+
+      res.status(500).json({
+        status: 'failed',
+        error: 'Failed to publish command to MQTT',
+        commandId
+      });
+    }
+  } catch (error) {
+    console.error('❌ Send command error:', error);
+    res.status(500).json({ error: 'Failed to send command' });
+  }
+});
+
+// Get command history
+router.get('/history/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const result = await db.query(
+      `SELECT id, command_type, command_payload, status, sent_at, acknowledged_at
+       FROM command_logs
+       WHERE device_id = ?
+       ORDER BY sent_at DESC
+       LIMIT ? OFFSET ?`,
+      [deviceId, parseInt(limit, 10), parseInt(offset, 10)]
+    );
+
+    res.json({ commands: result.rows });
+  } catch (error) {
+    console.error('❌ Get command history error:', error);
+    res.status(500).json({ error: 'Failed to fetch command history' });
+  }
+});
+
+export default router;

@@ -1,0 +1,35 @@
+{
+  "name": "incubator-backend",
+  "version": "1.0.0",
+  "description": "IoT Incubator Monitoring and Control Platform - Backend",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "setup-db": "node src/scripts/setupDatabase.js",
+    "migrate": "node src/scripts/runMigrations.js"
+  },
+  "keywords": [
+    "iot",
+    "mqtt",
+    "incubator",
+    "monitoring"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-ws": "^5.0.2",
+    "mqtt": "^5.3.2",
+    "better-sqlite3": "^9.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
