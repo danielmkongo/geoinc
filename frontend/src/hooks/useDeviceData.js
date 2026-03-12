@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '../store/authStore';
 import { useDeviceStore } from '../store/deviceStore';
 import { readingsAPI } from '../services/api';
 
@@ -8,27 +7,26 @@ export const useDeviceData = (deviceId) => {
   const [error, setError] = useState(null);
   const currentReading = useDeviceStore((state) => state.currentReading);
   const updateReading = useDeviceStore((state) => state.updateReading);
-  const setTemperatureHistory = useDeviceStore(
-    (state) => state.setTemperatureHistory
-  );
+  const setTemperatureHistory = useDeviceStore((state) => state.setTemperatureHistory);
   const setHumidityHistory = useDeviceStore((state) => state.setHumidityHistory);
+  const setSoilTemperatureHistory = useDeviceStore((state) => state.setSoilTemperatureHistory);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // Fetch latest reading
         const latestRes = await readingsAPI.getLatest(deviceId);
         updateReading(latestRes.data);
 
-        // Fetch last 8 temperature readings
         const tempRes = await readingsAPI.getLast8(deviceId, 'temperature');
         setTemperatureHistory(tempRes.data.readings);
 
-        // Fetch last 8 humidity readings
         const humRes = await readingsAPI.getLast8(deviceId, 'humidity');
         setHumidityHistory(humRes.data.readings);
+
+        const soilRes = await readingsAPI.getLast8(deviceId, 'soil_temperature');
+        setSoilTemperatureHistory(soilRes.data.readings);
 
         setError(null);
       } catch (err) {
@@ -40,7 +38,7 @@ export const useDeviceData = (deviceId) => {
     };
 
     fetchData();
-  }, [deviceId, updateReading, setTemperatureHistory, setHumidityHistory]);
+  }, [deviceId, updateReading, setTemperatureHistory, setHumidityHistory, setSoilTemperatureHistory]);
 
   return { loading, error, currentReading };
 };

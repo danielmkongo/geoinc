@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt,
+  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
@@ -68,6 +68,7 @@ const Dashboard = () => {
 
   const temperature = currentReading?.temperature ?? 0;
   const humidity = currentReading?.humidity ?? 0;
+  const soilTemperature = currentReading?.soil_temperature ?? null;
   const unreadAlerts = alerts.filter((a) => !a.acknowledged).length;
   const isOnline = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 60 * 60 * 1000;
   const tempNormal = temperature >= 36 && temperature <= 39;
@@ -103,7 +104,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-5 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 lg:gap-5 mb-6">
         <StatCard
           title="Temperature"
           value={temperature.toFixed(1)}
@@ -125,6 +126,15 @@ const Dashboard = () => {
           trend={humidNormal ? '✓ Normal' : '⚠ Alert'}
           trendClass={humidNormal ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}
           subtitle="Target: 40 – 70%"
+        />
+        <StatCard
+          title="Soil Temperature"
+          value={soilTemperature !== null ? soilTemperature.toFixed(1) : '—'}
+          unit={soilTemperature !== null ? '°C' : ''}
+          icon={MdGrass}
+          borderClass="border-teal-100 dark:border-teal-900/30"
+          iconBg="bg-gradient-to-br from-teal-400 to-teal-600 shadow-teal-400/40"
+          subtitle="Soil / water temp"
         />
         <StatCard
           title="Alerts"

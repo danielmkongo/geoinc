@@ -109,12 +109,12 @@ export class MQTTService {
   async handleSensorData(data) {
     try {
       // Insert reading into database
-      const { temperature, humidity, heater_status, humidifier_status, linear_actuator_status, timestamp } = data;
-      
+      const { temperature, humidity, soil_temperature, heater_status, humidifier_status, linear_actuator_status, timestamp } = data;
+
       await db.query(
-        `INSERT OR IGNORE INTO readings (device_id, temperature, humidity, heater_status, humidifier_status, linear_actuator_status, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [1, temperature, humidity, heater_status, humidifier_status, linear_actuator_status, new Date(timestamp * 1000).toISOString()]
+        `INSERT OR IGNORE INTO readings (device_id, temperature, humidity, soil_temperature, heater_status, humidifier_status, linear_actuator_status, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [1, temperature, humidity, soil_temperature ?? null, heater_status, humidifier_status, linear_actuator_status, new Date(timestamp * 1000).toISOString()]
       );
 
       // Update device last_update
@@ -136,14 +136,14 @@ export class MQTTService {
         }
       }
 
-      console.log('✅ Sensor data stored:', { temperature, humidity });
-      
+      console.log('✅ Sensor data stored:', { temperature, humidity, soil_temperature });
+
       // Broadcast to WebSocket clients
       if (this.wsManager) {
         this.wsManager.broadcast({
           type: 'sensor_update',
           deviceId: 1,
-          data: { temperature, humidity, heater_status, humidifier_status, linear_actuator_status },
+          data: { temperature, humidity, soil_temperature, heater_status, humidifier_status, linear_actuator_status },
           timestamp: new Date()
         });
       }

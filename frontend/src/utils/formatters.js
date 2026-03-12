@@ -1,6 +1,16 @@
+// SQLite CURRENT_TIMESTAMP returns 'YYYY-MM-DD HH:MM:SS' without timezone indicator.
+// JavaScript parses this as local time, but SQLite stores UTC — force UTC interpretation.
+const parseDate = (date) => {
+  if (!date) return new Date(NaN);
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(date)) {
+    return new Date(date.replace(' ', 'T') + 'Z');
+  }
+  return new Date(date);
+};
+
 export const formatDate = (date) => {
   if (!date) return 'N/A';
-  return new Date(date).toLocaleDateString('en-US', {
+  return parseDate(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -11,7 +21,7 @@ export const formatDate = (date) => {
 
 export const formatTime = (date) => {
   if (!date) return 'N/A';
-  return new Date(date).toLocaleTimeString('en-US', {
+  return parseDate(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
@@ -22,7 +32,7 @@ export const formatRelativeTime = (date) => {
   if (!date) return 'Unknown';
   
   const now = new Date();
-  const diff = now - new Date(date);
+  const diff = now - parseDate(date);
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);

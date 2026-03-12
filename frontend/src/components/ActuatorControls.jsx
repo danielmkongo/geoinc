@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDeviceStore } from '../store/deviceStore';
 import { commandsAPI } from '../services/api';
 
@@ -27,7 +27,7 @@ const ActuatorRow = ({ label, icon, isOn, onToggle, loading, activeClass }) => (
       <div>
         <p className="font-semibold text-gray-900 dark:text-white text-sm">{label}</p>
         <p className={`text-xs font-medium ${isOn ? 'text-current opacity-70' : 'text-gray-400 dark:text-gray-500'}`}>
-          {isOn ? 'Active' : 'Inactive'}
+          {loading ? 'Waiting for confirmation...' : isOn ? 'Active' : 'Inactive'}
         </p>
       </div>
     </div>
@@ -37,25 +37,53 @@ const ActuatorRow = ({ label, icon, isOn, onToggle, loading, activeClass }) => (
 
 export const ActuatorControls = ({ deviceId = '1' }) => {
   const actuatorStates = useDeviceStore((state) => state.actuatorStates);
-  const updateActuatorState = useDeviceStore((state) => state.updateActuatorState);
-  const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState({});
   const [feedback, setFeedback] = useState(null);
+  const prevStatesRef = useRef(actuatorStates);
+  const timeoutsRef = useRef({});
+
+  // When actuatorStates changes via WebSocket, treat it as confirmation for any pending actuator
+  useEffect(() => {
+    const prev = prevStatesRef.current;
+    setPending((currentPending) => {
+      const next = { ...currentPending };
+      let changed = false;
+      Object.keys(currentPending).forEach((key) => {
+        if (currentPending[key] && actuatorStates[key] !== prev[key]) {
+          next[key] = false;
+          changed = true;
+          clearTimeout(timeoutsRef.current[key]);
+          setFeedback({ type: 'success', msg: key.replace(/_/g, ' ') + ' confirmed' });
+          setTimeout(() => setFeedback(null), 2500);
+        }
+      });
+      return changed ? next : currentPending;
+    });
+    prevStatesRef.current = actuatorStates;
+  }, [actuatorStates]);
+
+  useEffect(() => {
+    return () => Object.values(timeoutsRef.current).forEach(clearTimeout);
+  }, []);
 
   const handleToggle = async (key) => {
+    if (pending[key]) return;
     try {
-      setLoading(true);
+      setPending((p) => ({ ...p, [key]: true }));
       setFeedback(null);
       const newState = { ...actuatorStates, [key]: !actuatorStates[key] };
-      updateActuatorState(newState);
       await commandsAPI.send(deviceId, newState);
-      setFeedback({ type: 'success', msg: key.replace(/_/g, ' ') + ' toggled' });
-      setTimeout(() => setFeedback(null), 2500);
+      // Don't update UI — wait for device to confirm via device/status MQTT message
+      timeoutsRef.current[key] = setTimeout(() => {
+        setPending((p) => {
+          if (!p[key]) return p;
+          setFeedback({ type: 'error', msg: 'No confirmation received from device' });
+          return { ...p, [key]: false };
+        });
+      }, 5000);
     } catch (err) {
-      console.error('Command error:', err);
-      updateActuatorState(actuatorStates);
+      setPending((p) => ({ ...p, [key]: false }));
       setFeedback({ type: 'error', msg: err.response?.data?.error || 'Command failed' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -75,7 +103,7 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
         icon="🔥"
         isOn={actuatorStates.heater}
         onToggle={() => handleToggle('heater')}
-        loading={loading}
+        loading={!!pending.heater}
         activeClass="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400"
       />
       <ActuatorRow
@@ -83,7 +111,7 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
         icon="💧"
         isOn={actuatorStates.humidifier}
         onToggle={() => handleToggle('humidifier')}
-        loading={loading}
+        loading={!!pending.humidifier}
         activeClass="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-400"
       />
       <ActuatorRow
@@ -91,7 +119,7 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
         icon="⚙️"
         isOn={actuatorStates.linear_actuator}
         onToggle={() => handleToggle('linear_actuator')}
-        loading={loading}
+        loading={!!pending.linear_actuator}
         activeClass="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/50 text-purple-600 dark:text-purple-400"
       />
     </div>

@@ -30,7 +30,15 @@ async function setupDatabase() {
       }
     }
     console.log('✅ Schema created successfully');
-    
+
+    // Migrations for existing databases
+    try {
+      db.exec('ALTER TABLE readings ADD COLUMN soil_temperature REAL');
+      console.log('✅ Migration: added soil_temperature column');
+    } catch (_) {
+      // Column already exists — safe to ignore
+    }
+
     // Insert default device
     const deviceCheck = db.prepare('SELECT id FROM devices WHERE mqtt_topic_prefix = ?').get('incubator/device1');
     

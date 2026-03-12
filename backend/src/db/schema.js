@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS readings (
   device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   temperature REAL,
   humidity REAL,
+  soil_temperature REAL,
   heater_status INTEGER,
   humidifier_status INTEGER,
   linear_actuator_status INTEGER,

@@ -11,29 +11,28 @@ export const useWebSocket = () => {
   const setWSConnected = useUIStore((state) => state.setWSConnected);
   const setConnectionError = useUIStore((state) => state.setConnectionError);
   const updateReading = useDeviceStore((state) => state.updateReading);
-  const addTemperatureReading = useDeviceStore(
-    (state) => state.addTemperatureReading
-  );
+  const addTemperatureReading = useDeviceStore((state) => state.addTemperatureReading);
   const addHumidityReading = useDeviceStore((state) => state.addHumidityReading);
-  const updateActuatorState = useDeviceStore(
-    (state) => state.updateActuatorState
-  );
+  const addSoilTemperatureReading = useDeviceStore((state) => state.addSoilTemperatureReading);
+  const updateActuatorState = useDeviceStore((state) => state.updateActuatorState);
   const addAlert = useAlertStore((state) => state.addAlert);
 
   useEffect(() => {
     if (!token) return;
 
     const handleMessage = (message) => {
-      const { type, data, deviceId, alert } = message;
+      const { type, data, alert } = message;
 
       switch (type) {
         case 'sensor_update':
-          // Update current reading and history
           if (data.temperature !== null) {
             addTemperatureReading(data.temperature, new Date());
           }
           if (data.humidity !== null) {
             addHumidityReading(data.humidity, new Date());
+          }
+          if (data.soil_temperature != null) {
+            addSoilTemperatureReading(data.soil_temperature, new Date());
           }
           updateReading({
             ...data,
@@ -100,6 +99,7 @@ export const useWebSocket = () => {
     updateReading,
     addTemperatureReading,
     addHumidityReading,
+    addSoilTemperatureReading,
     updateActuatorState,
     addAlert,
     setWSConnected,

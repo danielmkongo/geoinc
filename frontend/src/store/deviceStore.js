@@ -6,6 +6,7 @@ export const useDeviceStore = create((set) => ({
   currentReading: {
     temperature: null,
     humidity: null,
+    soil_temperature: null,
     heater_status: null,
     humidifier_status: null,
     linear_actuator_status: null,
@@ -13,6 +14,7 @@ export const useDeviceStore = create((set) => ({
   },
   temperatureHistory: [],
   humidityHistory: [],
+  soilTemperatureHistory: [],
   actuatorStates: {
     heater: false,
     humidifier: false,
@@ -34,23 +36,21 @@ export const useDeviceStore = create((set) => ({
   },
 
   addTemperatureReading: (value, timestamp) => {
-    set((state) => {
-      const newHistory = [
-        ...state.temperatureHistory,
-        { value, timestamp },
-      ].slice(-8);
-      return { temperatureHistory: newHistory };
-    });
+    set((state) => ({
+      temperatureHistory: [...state.temperatureHistory, { value, timestamp }].slice(-8),
+    }));
   },
 
   addHumidityReading: (value, timestamp) => {
-    set((state) => {
-      const newHistory = [
-        ...state.humidityHistory,
-        { value, timestamp },
-      ].slice(-8);
-      return { humidityHistory: newHistory };
-    });
+    set((state) => ({
+      humidityHistory: [...state.humidityHistory, { value, timestamp }].slice(-8),
+    }));
+  },
+
+  addSoilTemperatureReading: (value, timestamp) => {
+    set((state) => ({
+      soilTemperatureHistory: [...state.soilTemperatureHistory, { value, timestamp }].slice(-8),
+    }));
   },
 
   setTemperatureHistory: (readings) => {
@@ -59,6 +59,10 @@ export const useDeviceStore = create((set) => ({
 
   setHumidityHistory: (readings) => {
     set({ humidityHistory: readings.slice(-8) });
+  },
+
+  setSoilTemperatureHistory: (readings) => {
+    set({ soilTemperatureHistory: readings.slice(-8) });
   },
 
   updateActuatorState: (state) => {
