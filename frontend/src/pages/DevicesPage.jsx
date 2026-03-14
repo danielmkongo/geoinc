@@ -238,13 +238,14 @@ const DeviceCard = ({ device, reading, isAdmin, onEdit, onDelete }) => {
   const humidity = reading?.data?.humidity ?? reading?.humidity ?? null;
 
   const hasLocation = device.latitude != null && device.longitude != null;
+  const isOnline = device.last_update && (Date.now() - new Date(device.last_update).getTime()) < 30 * 60 * 1000;
 
   return (
     <div className="relative flex flex-col bg-white dark:bg-slate-900/80 border border-gray-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl hover:border-gray-300 dark:hover:border-slate-600/60 transition-all duration-200 backdrop-blur-sm">
       {/* Card header gradient band */}
       <div
         className={`h-1.5 w-full flex-shrink-0 ${
-          device.online
+          isOnline
             ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600'
             : 'bg-gradient-to-r from-red-700 via-rose-600 to-red-700'
         }`}
@@ -264,7 +265,7 @@ const DeviceCard = ({ device, reading, isAdmin, onEdit, onDelete }) => {
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md
-                ${device.online
+                ${isOnline
                   ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
                   : 'bg-gradient-to-br from-slate-600 to-slate-700'
                 }`}
@@ -280,7 +281,7 @@ const DeviceCard = ({ device, reading, isAdmin, onEdit, onDelete }) => {
           </div>
 
           {/* Online badge */}
-          {device.online ? (
+          {isOnline ? (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Online
@@ -519,7 +520,7 @@ export const DevicesPage = () => {
     }
   };
 
-  const onlineCount = devices.filter((d) => d.online).length;
+  const onlineCount = devices.filter((d) => d.last_update && (Date.now() - new Date(d.last_update).getTime()) < 30 * 60 * 1000).length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">

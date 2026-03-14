@@ -84,7 +84,12 @@ export class MQTTService {
   async handleMessage(topic, message) {
     try {
       const data = JSON.parse(message);
-      
+
+      // Any message from the device means it's online — update last_update
+      await db.query(
+        'UPDATE devices SET last_update = CURRENT_TIMESTAMP, online = 1 WHERE id = 1'
+      );
+
       if (topic.includes('telemetry/data')) {
         await this.handleSensorData(data);
       } else if (topic.includes('device/status')) {

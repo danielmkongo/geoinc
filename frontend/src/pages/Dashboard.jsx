@@ -70,7 +70,7 @@ const Dashboard = () => {
   const humidity = currentReading?.humidity ?? 0;
   const soilTemperature = currentReading?.soil_temperature ?? null;
   const unreadAlerts = alerts.filter((a) => !a.acknowledged).length;
-  const isOnline = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 60 * 60 * 1000;
+  const isOnline = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 30 * 60 * 1000;
   const tempNormal = temperature >= 36 && temperature <= 39;
   const humidNormal = humidity >= 40 && humidity <= 70;
 
