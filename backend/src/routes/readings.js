@@ -9,7 +9,7 @@ router.get('/latest/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
 
     const result = await db.query(
-      `SELECT device_id, temperature, humidity, soil_temperature,
+      `SELECT device_id, temperature, humidity, water_temperature,
               pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
               timestamp
        FROM readings
@@ -24,7 +24,7 @@ router.get('/latest/:deviceId', async (req, res) => {
         deviceId,
         temperature: null,
         humidity: null,
-        soil_temperature: null,
+        water_temperature: null,
         pump_status: null,
         egg_rotation_motor_status: null,
         exhaust_fan_status: null,
@@ -47,8 +47,8 @@ router.get('/last-8/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
     const { parameter } = req.query; // 'temperature' or 'humidity'
 
-    if (!parameter || !['temperature', 'humidity', 'soil_temperature'].includes(parameter)) {
-      return res.status(400).json({ error: 'Parameter must be temperature, humidity, or soil_temperature' });
+    if (!parameter || !['temperature', 'humidity', 'water_temperature'].includes(parameter)) {
+      return res.status(400).json({ error: 'Parameter must be temperature, humidity, or water_temperature' });
     }
 
     const result = await db.query(

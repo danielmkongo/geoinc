@@ -47,7 +47,7 @@ Publish sensor readings on a regular interval (recommended: every 5–10 seconds
 {
   "temperature": 37.5,
   "humidity": 55.2,
-  "soil_temperature": 28.3,
+  "water_temperature": 28.3,
   "pump_status": 1,
   "egg_rotation_motor_status": 1,
   "exhaust_fan_status": 0,
@@ -61,7 +61,7 @@ Publish sensor readings on a regular interval (recommended: every 5–10 seconds
 |------------------------------|---------|------------------------------------------|
 | `temperature`                | float   | Air temperature in °C                    |
 | `humidity`                   | float   | Relative humidity in %                   |
-| `soil_temperature`           | float   | Soil / water temperature in °C (send `null` if sensor unavailable) |
+| `water_temperature`           | float   | Fluid / water temperature in °C (send `null` if sensor unavailable) |
 | `pump_status`                | int     | `1` = ON, `0` = OFF                      |
 | `egg_rotation_motor_status`  | int     | `1` = ON, `0` = OFF                      |
 | `exhaust_fan_status`         | int     | `1` = ON, `0` = OFF                      |

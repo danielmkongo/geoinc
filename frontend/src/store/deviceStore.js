@@ -6,7 +6,7 @@ export const useDeviceStore = create((set) => ({
   currentReading: {
     temperature: null,
     humidity: null,
-    soil_temperature: null,
+    water_temperature: null,
     pump_status: null,
     egg_rotation_motor_status: null,
     exhaust_fan_status: null,
@@ -25,6 +25,8 @@ export const useDeviceStore = create((set) => ({
     radiator_fan: false,
   },
   lastUpdate: null,
+  serverLastUpdate: null, // server-stamped last_update from devices table (UTC-safe)
+  firmwareVersion: null,  // firmware version last reported by device via request_commands
   isLoadingReadings: false,
   incubationStart: null,
 
@@ -52,7 +54,7 @@ export const useDeviceStore = create((set) => ({
     }));
   },
 
-  addSoilTemperatureReading: (value, timestamp) => {
+  addWaterTemperatureReading: (value, timestamp) => {
     set((state) => ({
       soilTemperatureHistory: [...state.soilTemperatureHistory, { value, timestamp }].slice(-8),
     }));
@@ -66,7 +68,7 @@ export const useDeviceStore = create((set) => ({
     set({ humidityHistory: readings.slice(-8) });
   },
 
-  setSoilTemperatureHistory: (readings) => {
+  setWaterTemperatureHistory: (readings) => {
     set({ soilTemperatureHistory: readings.slice(-8) });
   },
 
@@ -80,5 +82,25 @@ export const useDeviceStore = create((set) => ({
 
   setIncubationStart: (date) => {
     set({ incubationStart: date });
+  },
+
+  setServerLastUpdate: (timestamp) => {
+    set({ serverLastUpdate: timestamp });
+  },
+
+  setFirmwareVersion: (version) => {
+    set({ firmwareVersion: version });
+  },
+
+  resetActuators: () => {
+    set({
+      actuatorStates: {
+        pump: false,
+        egg_rotation_motor: false,
+        exhaust_fan: false,
+        inlet_fan: false,
+        radiator_fan: false,
+      },
+    });
   },
 }));

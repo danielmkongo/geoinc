@@ -15,6 +15,19 @@ const db = new Database(dbPath);
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 
+// Migrations — add columns that may not exist in older DB files
+const migrations = [
+  'ALTER TABLE devices ADD COLUMN firmware_version TEXT',
+  'ALTER TABLE devices ADD COLUMN incubation_start DATETIME',
+  'ALTER TABLE devices ADD COLUMN latitude REAL',
+  'ALTER TABLE devices ADD COLUMN longitude REAL',
+  'ALTER TABLE devices ADD COLUMN location_name TEXT',
+  'ALTER TABLE readings RENAME COLUMN soil_temperature TO water_temperature',
+];
+for (const sql of migrations) {
+  try { db.exec(sql); } catch (_) { /* column already exists — skip */ }
+}
+
 // Create query wrapper for async compatibility
 export const query = (sql, params = []) => {
   try {

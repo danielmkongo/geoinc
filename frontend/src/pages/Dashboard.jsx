@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass, MdEgg,
+  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass, MdEgg, MdMemory,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
@@ -11,7 +11,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceStore } from '../store/deviceStore';
 import { useAlertStore } from '../store/alertStore';
 import { alertsAPI, devicesAPI } from '../services/api';
-import { formatRelativeTime } from '../utils/formatters';
+import { formatRelativeTime, isWithinMinutes } from '../utils/formatters';
 
 const TZ = 'Africa/Dar_es_Salaam';
 
@@ -39,8 +39,11 @@ const Dashboard = () => {
   const currentReading = useDeviceStore((state) => state.currentReading);
   const actuatorStates = useDeviceStore((state) => state.actuatorStates);
   const lastUpdate = useDeviceStore((state) => state.lastUpdate);
+  const serverLastUpdate = useDeviceStore((state) => state.serverLastUpdate);
+  const firmwareVersion = useDeviceStore((state) => state.firmwareVersion);
   const incubationStart = useDeviceStore((state) => state.incubationStart);
   const setIncubationStart = useDeviceStore((state) => state.setIncubationStart);
+  const resetActuators = useDeviceStore((state) => state.resetActuators);
   const { loading, error } = useDeviceData(deviceId);
   const alerts = useAlertStore((state) => state.alerts);
   const setAlerts = useAlertStore((state) => state.setAlerts);
@@ -85,11 +88,21 @@ const Dashboard = () => {
 
   if (loading || !alertsLoaded) return <LoadingSpinner fullScreen />;
 
+  // Use server-stamped last_update (UTC-safe) — falls back to WS timestamp if server value not yet loaded
+  const isOnline = isWithinMinutes(serverLastUpdate, 20) ||
+    (lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 20 * 60 * 1000);
+
+  // Reset all toggle switches when device goes offline
+  useEffect(() => {
+    if (serverLastUpdate && !isWithinMinutes(serverLastUpdate, 20)) {
+      resetActuators();
+    }
+  }, [serverLastUpdate, resetActuators]);
+
   const temperature = currentReading?.temperature ?? 0;
   const humidity = currentReading?.humidity ?? 0;
-  const soilTemperature = currentReading?.soil_temperature ?? null;
+  const soilTemperature = currentReading?.water_temperature ?? null;
   const unreadAlerts = alerts.filter((a) => !a.acknowledged).length;
-  const isOnline = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 30 * 60 * 1000;
   const tempNormal = temperature >= 36 && temperature <= 39;
   const humidNormal = humidity >= 40 && humidity <= 70;
 
@@ -167,13 +180,13 @@ const Dashboard = () => {
           subtitle="Target: 40 – 70%"
         />
         <StatCard
-          title="Soil Temperature"
+          title="Fluid Temperature"
           value={soilTemperature !== null ? soilTemperature.toFixed(1) : '—'}
           unit={soilTemperature !== null ? '°C' : ''}
           icon={MdGrass}
           borderClass="border-teal-100 dark:border-teal-900/30"
           iconBg="bg-gradient-to-br from-teal-400 to-teal-600 shadow-teal-400/40"
-          subtitle="Soil / water temp"
+          subtitle="Fluid / water temp"
         />
         <StatCard
           title="Incubation Day"
@@ -204,7 +217,17 @@ const Dashboard = () => {
           iconBg={isOnline ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-emerald-400/40' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40'}
           trend={isOnline ? 'Connected' : 'Disconnected'}
           trendClass={isOnline ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}
-          subtitle={isOnline && currentReading ? 'Updated ' + formatRelativeTime(currentReading.timestamp) : 'No recent data'}
+          subtitle={isOnline && serverLastUpdate ? 'Updated ' + formatRelativeTime(serverLastUpdate) : 'No recent data'}
+        />
+        <StatCard
+          title="Firmware"
+          value={firmwareVersion ?? '—'}
+          icon={MdMemory}
+          borderClass="border-violet-100 dark:border-violet-900/30"
+          iconBg="bg-gradient-to-br from-violet-400 to-violet-600 shadow-violet-400/40"
+          trend="Device FW"
+          trendClass="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"
+          subtitle={firmwareVersion ? 'Last reported version' : 'Waiting for device'}
         />
       </div>
 

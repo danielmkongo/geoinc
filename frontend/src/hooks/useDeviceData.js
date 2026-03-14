@@ -9,9 +9,11 @@ export const useDeviceData = (deviceId) => {
   const updateReading = useDeviceStore((state) => state.updateReading);
   const setTemperatureHistory = useDeviceStore((state) => state.setTemperatureHistory);
   const setHumidityHistory = useDeviceStore((state) => state.setHumidityHistory);
-  const setSoilTemperatureHistory = useDeviceStore((state) => state.setSoilTemperatureHistory);
+  const setWaterTemperatureHistory = useDeviceStore((state) => state.setWaterTemperatureHistory);
   const updateActuatorState = useDeviceStore((state) => state.updateActuatorState);
   const setIncubationStart = useDeviceStore((state) => state.setIncubationStart);
+  const setServerLastUpdate = useDeviceStore((state) => state.setServerLastUpdate);
+  const setFirmwareVersion = useDeviceStore((state) => state.setFirmwareVersion);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,7 +24,7 @@ export const useDeviceData = (deviceId) => {
           readingsAPI.getLatest(deviceId),
           readingsAPI.getLast8(deviceId, 'temperature'),
           readingsAPI.getLast8(deviceId, 'humidity'),
-          readingsAPI.getLast8(deviceId, 'soil_temperature'),
+          readingsAPI.getLast8(deviceId, 'water_temperature'),
           devicesAPI.getStatus(deviceId),
           devicesAPI.getById(deviceId),
         ]);
@@ -30,7 +32,7 @@ export const useDeviceData = (deviceId) => {
         updateReading(latestRes.data);
         setTemperatureHistory(tempRes.data.readings);
         setHumidityHistory(humRes.data.readings);
-        setSoilTemperatureHistory(soilRes.data.readings);
+        setWaterTemperatureHistory(soilRes.data.readings);
 
         // Sync actuator toggle switches to last-known device state
         const s = statusRes.data;
@@ -42,9 +44,10 @@ export const useDeviceData = (deviceId) => {
           radiator_fan: !!s.radiator_fan,
         });
 
-        if (deviceRes.data?.device?.incubation_start) {
-          setIncubationStart(deviceRes.data.device.incubation_start);
-        }
+        const dev = deviceRes.data?.device;
+        if (dev?.incubation_start) setIncubationStart(dev.incubation_start);
+        if (dev?.last_update) setServerLastUpdate(dev.last_update);
+        if (dev?.firmware_version) setFirmwareVersion(dev.firmware_version);
 
         setError(null);
       } catch (err) {
@@ -56,7 +59,7 @@ export const useDeviceData = (deviceId) => {
     };
 
     fetchData();
-  }, [deviceId, updateReading, setTemperatureHistory, setHumidityHistory, setSoilTemperatureHistory, updateActuatorState, setIncubationStart]);
+  }, [deviceId, updateReading, setTemperatureHistory, setHumidityHistory, setWaterTemperatureHistory, updateActuatorState, setIncubationStart, setServerLastUpdate, setFirmwareVersion]);
 
   return { loading, error, currentReading };
 };

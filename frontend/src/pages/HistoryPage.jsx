@@ -140,9 +140,9 @@ export const HistoryPage = () => {
   const avgHumid = readings.length
     ? (readings.reduce((s, r) => s + r.humidity, 0) / readings.length).toFixed(2)
     : '—';
-  const soilReadings = readings.filter((r) => r.soil_temperature != null);
+  const soilReadings = readings.filter((r) => r.water_temperature != null);
   const avgSoil = soilReadings.length
-    ? (soilReadings.reduce((s, r) => s + r.soil_temperature, 0) / soilReadings.length).toFixed(2)
+    ? (soilReadings.reduce((s, r) => s + r.water_temperature, 0) / soilReadings.length).toFixed(2)
     : '—';
 
   return (
@@ -250,7 +250,7 @@ export const HistoryPage = () => {
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-teal-100 dark:border-teal-900/30 shadow-sm p-4 text-center">
             <p className="text-2xl font-bold text-teal-500">{avgSoil}{avgSoil !== '—' ? '°C' : ''}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Avg Soil Temp</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Avg Fluid Temp</p>
           </div>
         </div>
       )}
@@ -274,7 +274,7 @@ export const HistoryPage = () => {
                 <tr className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Timestamp</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Temperature</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Soil Temp</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fluid Temp</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Humidity</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pump</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Egg Motor</th>
@@ -301,9 +301,9 @@ export const HistoryPage = () => {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        {r.soil_temperature != null ? (
+                        {r.water_temperature != null ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400">
-                            {r.soil_temperature.toFixed(2)}°C
+                            {r.water_temperature.toFixed(2)}°C
                           </span>
                         ) : (
                           <span className="text-xs text-gray-300 dark:text-slate-600">—</span>

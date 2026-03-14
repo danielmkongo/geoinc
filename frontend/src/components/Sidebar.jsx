@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { useDeviceStore } from '../store/deviceStore';
 
-const LIVE_THRESHOLD_MS = 60 * 60 * 1000;
+const LIVE_THRESHOLD_MS = 20 * 60 * 1000;
 
 const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, onClick }) => (
   <Link
@@ -89,7 +89,7 @@ export const Sidebar = () => {
               <span className="text-xl">🌱</span>
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
+              <h1 className="text-white font-bold text-base leading-tight">TGDC</h1>
               <p className="text-slate-400 text-xs">IoT Monitoring Platform</p>
             </div>
           </div>

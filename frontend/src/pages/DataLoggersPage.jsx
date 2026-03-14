@@ -1,21 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MdSensors, MdLocationOn, MdSignalWifi4Bar, MdSignalWifiOff, MdAdd } from 'react-icons/md';
+import { MdSensors, MdLocationOn } from 'react-icons/md';
 import { dataLoggersAPI } from '../services/api';
+import { formatRelativeTime, isWithinMinutes } from '../utils/formatters';
 
-const timeAgo = (date) => {
-  if (!date) return 'Never';
-  const diff = Date.now() - new Date(date).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  return Math.floor(diff / 86400000) + 'd ago';
-};
-
-const isOnline = (lastSeen) => {
-  if (!lastSeen) return false;
-  return Date.now() - new Date(lastSeen).getTime() < 30 * 60 * 1000; // 30 min
-};
+const isOnline = (lastSeen) => isWithinMinutes(lastSeen, 20);
 
 export const DataLoggersPage = () => {
   const [loggers, setLoggers] = useState([]);
@@ -105,7 +94,7 @@ export const DataLoggersPage = () => {
                     <span className="text-xs text-gray-300 dark:text-slate-600">No location set</span>
                   )}
                   <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {logger.last_seen ? timeAgo(logger.last_seen) : 'No data yet'}
+                    {logger.last_seen ? formatRelativeTime(logger.last_seen) : 'No data yet'}
                   </span>
                 </div>
               </Link>

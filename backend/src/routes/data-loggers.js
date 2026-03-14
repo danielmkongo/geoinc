@@ -101,12 +101,10 @@ router.get('/:id/latest', async (req, res) => {
 router.get('/:id/readings', async (req, res) => {
   try {
     const { startDate, endDate, limit = 500 } = req.query;
-    // SQLite stores timestamp as "YYYY-MM-DD HH:MM:SS" — must compare in same format
-    const toSQLiteStr = (iso) => new Date(iso).toISOString().replace('T', ' ').slice(0, 19);
     let sql = 'SELECT * FROM weather_readings WHERE data_logger_id = ?';
     const params = [req.params.id];
-    if (startDate) { sql += ' AND timestamp >= ?'; params.push(toSQLiteStr(startDate)); }
-    if (endDate)   { sql += ' AND timestamp <= ?'; params.push(toSQLiteStr(endDate)); }
+    if (startDate) { sql += ' AND timestamp >= ?'; params.push(startDate); }
+    if (endDate)   { sql += ' AND timestamp <= ?'; params.push(endDate); }
     sql += ' ORDER BY timestamp DESC LIMIT ?';
     params.push(parseInt(limit, 10));
 

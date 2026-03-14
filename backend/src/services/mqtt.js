@@ -117,17 +117,17 @@ export class MQTTService {
   async handleSensorData(data) {
     try {
       // Insert reading into database
-      const { temperature, humidity, soil_temperature,
+      const { temperature, humidity, water_temperature,
               pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
               timestamp } = data;
 
       await db.query(
         `INSERT OR IGNORE INTO readings
-           (device_id, temperature, humidity, soil_temperature,
+           (device_id, temperature, humidity, water_temperature,
             pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
             timestamp)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [1, temperature, humidity, soil_temperature ?? null,
+        [1, temperature, humidity, water_temperature ?? null,
          pump_status ?? null, egg_rotation_motor_status ?? null,
          exhaust_fan_status ?? null, inlet_fan_status ?? null, radiator_fan_status ?? null,
          new Date(timestamp * 1000).toISOString()]
@@ -152,14 +152,14 @@ export class MQTTService {
         }
       }
 
-      console.log('✅ Sensor data stored:', { temperature, humidity, soil_temperature });
+      console.log('✅ Sensor data stored:', { temperature, humidity, water_temperature });
 
       // Broadcast to WebSocket clients
       if (this.wsManager) {
         this.wsManager.broadcast({
           type: 'sensor_update',
           deviceId: 1,
-          data: { temperature, humidity, soil_temperature,
+          data: { temperature, humidity, water_temperature,
                   pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status },
           timestamp: new Date()
         });
@@ -259,6 +259,14 @@ export class MQTTService {
   async handleCommandRequest(data) {
     try {
       const deviceVersion = data?.fv ?? null; // firmware version reported by device
+
+      // Persist the device's reported firmware version and broadcast to UI
+      if (deviceVersion) {
+        await db.query('UPDATE devices SET firmware_version = ? WHERE id = 1', [String(deviceVersion)]);
+        if (this.wsManager) {
+          this.wsManager.broadcast({ type: 'device_version', version: String(deviceVersion) });
+        }
+      }
 
       const [cmdResult, otaResult] = await Promise.all([
         db.query(

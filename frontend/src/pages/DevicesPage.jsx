@@ -6,17 +6,7 @@ import {
 } from 'react-icons/md';
 import { devicesAPI, adminAPI, readingsAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-const timeAgo = (date) => {
-  if (!date) return 'Never';
-  const diff = Date.now() - new Date(date).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  return Math.floor(diff / 86400000) + 'd ago';
-};
+import { formatRelativeTime, isWithinMinutes } from '../utils/formatters';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -238,7 +228,7 @@ const DeviceCard = ({ device, reading, isAdmin, onEdit, onDelete }) => {
   const humidity = reading?.data?.humidity ?? reading?.humidity ?? null;
 
   const hasLocation = device.latitude != null && device.longitude != null;
-  const isOnline = device.last_update && (Date.now() - new Date(device.last_update).getTime()) < 30 * 60 * 1000;
+  const isOnline = isWithinMinutes(device.last_update, 20);
 
   return (
     <div className="relative flex flex-col bg-white dark:bg-slate-900/80 border border-gray-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl hover:border-gray-300 dark:hover:border-slate-600/60 transition-all duration-200 backdrop-blur-sm">
@@ -339,7 +329,7 @@ const DeviceCard = ({ device, reading, isAdmin, onEdit, onDelete }) => {
             <MdWifi size={12} className="text-gray-300 dark:text-slate-600" />
             <code className="text-amber-400/80 text-xs">{device.mqtt_topic_prefix}</code>
           </div>
-          <p className="text-gray-400 dark:text-slate-600 text-xs">Last update: {timeAgo(device.last_update)}</p>
+          <p className="text-gray-400 dark:text-slate-600 text-xs">Last update: {formatRelativeTime(device.last_update)}</p>
         </div>
 
         {/* Actions */}
@@ -520,7 +510,7 @@ export const DevicesPage = () => {
     }
   };
 
-  const onlineCount = devices.filter((d) => d.last_update && (Date.now() - new Date(d.last_update).getTime()) < 30 * 60 * 1000).length;
+  const onlineCount = devices.filter((d) => isWithinMinutes(d.last_update, 20)).length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">

@@ -13,8 +13,10 @@ export const useWebSocket = () => {
   const updateReading = useDeviceStore((state) => state.updateReading);
   const addTemperatureReading = useDeviceStore((state) => state.addTemperatureReading);
   const addHumidityReading = useDeviceStore((state) => state.addHumidityReading);
-  const addSoilTemperatureReading = useDeviceStore((state) => state.addSoilTemperatureReading);
+  const addWaterTemperatureReading = useDeviceStore((state) => state.addWaterTemperatureReading);
   const updateActuatorState = useDeviceStore((state) => state.updateActuatorState);
+  const setServerLastUpdate = useDeviceStore((state) => state.setServerLastUpdate);
+  const setFirmwareVersion = useDeviceStore((state) => state.setFirmwareVersion);
   const addAlert = useAlertStore((state) => state.addAlert);
 
   useEffect(() => {
@@ -25,14 +27,15 @@ export const useWebSocket = () => {
 
       switch (type) {
         case 'sensor_update':
+          setServerLastUpdate(new Date().toISOString());
           if (data.temperature !== null) {
             addTemperatureReading(data.temperature, new Date());
           }
           if (data.humidity !== null) {
             addHumidityReading(data.humidity, new Date());
           }
-          if (data.soil_temperature != null) {
-            addSoilTemperatureReading(data.soil_temperature, new Date());
+          if (data.water_temperature != null) {
+            addWaterTemperatureReading(data.water_temperature, new Date());
           }
           updateReading({
             ...data,
@@ -42,6 +45,10 @@ export const useWebSocket = () => {
 
         case 'actuator_update':
           updateActuatorState(data);
+          break;
+
+        case 'device_version':
+          setFirmwareVersion(message.version);
           break;
 
         case 'alert':
@@ -99,8 +106,10 @@ export const useWebSocket = () => {
     updateReading,
     addTemperatureReading,
     addHumidityReading,
-    addSoilTemperatureReading,
+    addWaterTemperatureReading,
     updateActuatorState,
+    setServerLastUpdate,
+    setFirmwareVersion,
     addAlert,
     setWSConnected,
     setConnectionError,
