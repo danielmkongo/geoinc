@@ -14,7 +14,7 @@ export const storageService = {
 
   // Theme preference
   setTheme: (theme) => localStorage.setItem('theme', theme),
-  getTheme: () => localStorage.getItem('theme') || 'dark',
+  getTheme: () => localStorage.getItem('theme') || 'light',
 
   // Device preferences
   setDevicePreference: (deviceId) => localStorage.setItem('preferredDevice', deviceId),

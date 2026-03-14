@@ -101,33 +101,23 @@ export const ControlPage = () => {
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5 sticky top-8">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-sm">System Status</h3>
               <div className="space-y-3">
-                <div className={`p-4 rounded-xl border transition-all ${actuatorStates.heater ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50' : 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600/50'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"><span>🔥</span> Heater</span>
-                    <div className={`w-2.5 h-2.5 rounded-full ${actuatorStates.heater ? 'bg-red-500 animate-pulse' : 'bg-gray-300 dark:bg-slate-500'}`} />
+                {[
+                  { key: 'pump', label: 'Pump', icon: '💧', active: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50', dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400', msg: 'ACTIVE' },
+                  { key: 'egg_rotation_motor', label: 'Egg Rotation Motor', icon: '🥚', active: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', msg: 'ROTATING' },
+                  { key: 'exhaust_fan', label: 'Exhaust Fan', icon: '💨', active: 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800/50', dot: 'bg-cyan-500', text: 'text-cyan-600 dark:text-cyan-400', msg: 'RUNNING' },
+                  { key: 'inlet_fan', label: 'Inlet Fan', icon: '🌀', active: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/50', dot: 'bg-sky-500', text: 'text-sky-600 dark:text-sky-400', msg: 'RUNNING' },
+                  { key: 'radiator_fan', label: 'Radiator Fan', icon: '🌡️', active: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50', dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400', msg: 'RUNNING' },
+                ].map(({ key, label, icon, active, dot, text, msg }) => (
+                  <div key={key} className={`p-3 rounded-xl border transition-all ${actuatorStates[key] ? active : 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600/50'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"><span>{icon}</span> {label}</span>
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${actuatorStates[key] ? `${dot} animate-pulse` : 'bg-gray-300 dark:bg-slate-500'}`} />
+                    </div>
+                    <p className={`text-xs font-bold ${actuatorStates[key] ? text : 'text-gray-400 dark:text-gray-500'}`}>
+                      {actuatorStates[key] ? msg : 'STANDBY'}
+                    </p>
                   </div>
-                  <p className={`text-xs font-bold ${actuatorStates.heater ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                    {actuatorStates.heater ? 'HEATING ACTIVE' : 'STANDBY'}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-xl border transition-all ${actuatorStates.humidifier ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50' : 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600/50'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"><span>💧</span> Humidifier</span>
-                    <div className={`w-2.5 h-2.5 rounded-full ${actuatorStates.humidifier ? 'bg-blue-500 animate-pulse' : 'bg-gray-300 dark:bg-slate-500'}`} />
-                  </div>
-                  <p className={`text-xs font-bold ${actuatorStates.humidifier ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                    {actuatorStates.humidifier ? 'RUNNING' : 'STANDBY'}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-xl border transition-all ${actuatorStates.linear_actuator ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/50' : 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600/50'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"><span>⚙️</span> Actuator</span>
-                    <div className={`w-2.5 h-2.5 rounded-full ${actuatorStates.linear_actuator ? 'bg-purple-500 animate-pulse' : 'bg-gray-300 dark:bg-slate-500'}`} />
-                  </div>
-                  <p className={`text-xs font-bold ${actuatorStates.linear_actuator ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                    {actuatorStates.linear_actuator ? 'ACTIVE' : 'STANDBY'}
-                  </p>
-                </div>
+                ))}
               </div>
               <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl">
                 <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">

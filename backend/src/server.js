@@ -13,6 +13,7 @@ import commandRoutes from './routes/commands.js';
 import alertRoutes from './routes/alerts.js';
 import exportRoutes from './routes/export.js';
 import adminRoutes from './routes/admin.js';
+import dataLoggerRoutes from './routes/data-loggers.js';
 import { authMiddleware } from './middleware/auth.js';
 import { adminMiddleware } from './middleware/admin.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -43,6 +44,9 @@ app.ws('/ws', (ws, req) => {
   wsManager.handleConnection(ws, req);
 });
 
+// Serve uploaded firmware files
+app.use('/firmware', express.static(join(__dirname, '../uploads/firmware')));
+
 // Public routes
 app.use('/api/auth', authRoutes);
 app.get('/api/health', async (req, res) => {
@@ -61,6 +65,12 @@ app.use('/api/commands', authMiddleware, commandRoutes);
 app.use('/api/alerts', authMiddleware, alertRoutes);
 app.use('/api/export', authMiddleware, exportRoutes);
 app.use('/api/admin', authMiddleware, adminMiddleware, adminRoutes);
+
+// Data logger routes — ingest is public (device auth via api_key), rest require JWT
+app.use('/api/data-loggers', (req, res, next) => {
+  if (req.method === 'POST' && req.path === '/ingest') return next();
+  authMiddleware(req, res, next);
+}, dataLoggerRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

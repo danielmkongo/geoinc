@@ -2,23 +2,46 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   MdDashboard, MdSettings, MdHistory, MdClose, MdMenu, MdLogout,
-  MdAdminPanelSettings, MdPerson, MdShield,
+  MdAdminPanelSettings, MdPerson, MdShield, MdList,
 } from 'react-icons/md';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { useDeviceStore } from '../store/deviceStore';
 
-const LIVE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
+const LIVE_THRESHOLD_MS = 60 * 60 * 1000;
 
-const getNavItems = (isAdmin) => [
-  { path: '/', label: 'Dashboard', icon: MdDashboard, desc: 'Overview & Live Data' },
-  { path: '/control', label: 'Control', icon: MdSettings, desc: 'Manage Actuators' },
-  { path: '/history', label: 'History', icon: MdHistory, desc: 'Sensor Records' },
-  { path: '/profile', label: 'Profile', icon: MdPerson, desc: 'Account Settings' },
-  ...(isAdmin
-    ? [{ path: '/admin', label: 'Admin', icon: MdAdminPanelSettings, desc: 'User & Device Mgmt' }]
-    : []),
-];
+const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, onClick }) => (
+  <Link
+    to={path}
+    onClick={onClick}
+    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group
+      ${active
+        ? isAdminItem
+          ? 'bg-amber-500/20 border border-amber-500/30'
+          : 'bg-blue-600 shadow-md shadow-blue-600/30'
+        : 'hover:bg-slate-700/60'
+      }`}
+  >
+    <Icon
+      size={18}
+      className={active ? (isAdminItem ? 'text-amber-400' : 'text-white') : 'text-slate-400 group-hover:text-slate-200'}
+    />
+    <div className="flex-1 min-w-0">
+      <p className={`text-sm font-semibold leading-tight ${active ? (isAdminItem ? 'text-amber-300' : 'text-white') : 'text-slate-300 group-hover:text-white'}`}>
+        {label}
+      </p>
+      {desc && (
+        <p className={`text-xs leading-tight mt-0.5 ${active ? (isAdminItem ? 'text-amber-500/70' : 'text-blue-200') : 'text-slate-500 group-hover:text-slate-400'}`}>
+          {desc}
+        </p>
+      )}
+    </div>
+  </Link>
+);
+
+const SectionLabel = ({ children }) => (
+  <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest px-3 pt-4 pb-1.5">{children}</p>
+);
 
 export const Sidebar = () => {
   const { logout, user } = useAuth();
@@ -29,9 +52,9 @@ export const Sidebar = () => {
   const isLive = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < LIVE_THRESHOLD_MS;
 
   const isAdmin = user?.role === 'admin';
-  const navItems = getNavItems(isAdmin);
-
-  const isActive = (path) => location.pathname === path;
+  const close = () => setIsOpen(false);
+  const isActive = (path) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
   const displayName = user?.full_name || user?.username || 'User';
   const avatarLetter = displayName[0].toUpperCase();
@@ -48,10 +71,7 @@ export const Sidebar = () => {
 
       {/* Mobile overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden" onClick={close} />
       )}
 
       {/* Sidebar panel */}
@@ -64,87 +84,46 @@ export const Sidebar = () => {
       >
         {/* Logo */}
         <div className="p-5 border-b border-slate-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/40 flex-shrink-0">
-              <span className="text-xl">🥚</span>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-green-500/40 flex-shrink-0">
+              <span className="text-xl">🌱</span>
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-base leading-tight">Geothermal</h1>
-              <p className="text-slate-400 text-xs">Egg Incubation System</p>
+              <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
+              <p className="text-slate-400 text-xs">IoT Monitoring Platform</p>
             </div>
           </div>
-          {/* Live status */}
-          <div
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border
-              ${isLive
-                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/25 text-red-400'
-              }`}
-          >
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-            <span>{isLive ? 'Live · Device Active' : 'Offline · No Recent Data'}</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border
+            ${isLive ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-red-500/10 border-red-500/25 text-red-400'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+            <span>{isLive ? 'Incubator · Live' : 'Incubator · Offline'}</span>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest px-3 mb-3">Menu</p>
-          {navItems.map(({ path, label, icon: Icon, desc }) => {
-            const active = isActive(path);
-            const isAdminItem = path === '/admin';
-            return (
-              <Link
-                key={path}
-                to={path}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
-                  ${active
-                    ? isAdminItem
-                      ? 'bg-amber-500/20 shadow-lg shadow-amber-500/10 border border-amber-500/30'
-                      : 'bg-blue-600 shadow-lg shadow-blue-600/30'
-                    : 'hover:bg-slate-700/60'
-                  }`}
-              >
-                <Icon
-                  size={20}
-                  className={
-                    active
-                      ? isAdminItem
-                        ? 'text-amber-400'
-                        : 'text-white'
-                      : 'text-slate-400 group-hover:text-slate-200'
-                  }
-                />
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm font-semibold leading-tight ${
-                      active
-                        ? isAdminItem
-                          ? 'text-amber-300'
-                          : 'text-white'
-                        : 'text-slate-300 group-hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </p>
-                  <p
-                    className={`text-xs leading-tight mt-0.5 ${
-                      active
-                        ? isAdminItem
-                          ? 'text-amber-500/70'
-                          : 'text-blue-200'
-                        : 'text-slate-500 group-hover:text-slate-400'
-                    }`}
-                  >
-                    {desc}
-                  </p>
-                </div>
-                {active && !isAdminItem && (
-                  <div className="w-1.5 h-6 rounded-full bg-white/40 flex-shrink-0" />
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-3 overflow-y-auto">
+          {/* Incubator section */}
+          <SectionLabel>Incubator</SectionLabel>
+          <div className="space-y-0.5">
+            <NavLink path="/" label="Dashboard" icon={MdDashboard} desc="Overview & live data" active={isActive('/')} onClick={close} />
+            <NavLink path="/control" label="Control" icon={MdSettings} desc="Manage actuators" active={isActive('/control')} onClick={close} />
+            <NavLink path="/history" label="History" icon={MdHistory} desc="Sensor records" active={isActive('/history')} onClick={close} />
+          </div>
+
+          {/* Data Loggers section */}
+          <SectionLabel>Data Loggers</SectionLabel>
+          <div className="space-y-0.5">
+            <NavLink path="/data-loggers" label="All Loggers" icon={MdList} desc="View all stations" active={isActive('/data-loggers')} onClick={close} />
+          </div>
+
+          {/* Account section */}
+          <SectionLabel>Account</SectionLabel>
+          <div className="space-y-0.5">
+            <NavLink path="/profile" label="Profile" icon={MdPerson} desc="Account settings" active={isActive('/profile')} onClick={close} />
+            {isAdmin && (
+              <NavLink path="/admin" label="Admin" icon={MdAdminPanelSettings} desc="Users, devices & OTA" active={isActive('/admin')} isAdmin onClick={close} />
+            )}
+          </div>
         </nav>
 
         {/* Bottom */}
@@ -159,7 +138,7 @@ export const Sidebar = () => {
 
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="relative flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white text-sm font-bold">
                 {avatarLetter}
               </div>
               {isAdmin && (

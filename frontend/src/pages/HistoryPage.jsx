@@ -270,9 +270,11 @@ export const HistoryPage = () => {
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Temperature</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Soil Temp</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Humidity</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Heater</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Humidifier</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Actuator</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pump</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Egg Motor</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Exhaust</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Inlet</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Radiator</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
@@ -307,13 +309,19 @@ export const HistoryPage = () => {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <StatusPill isOn={r.heater_status} onColor="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" />
+                        <StatusPill isOn={r.pump_status} onColor="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
                       </td>
                       <td className="px-5 py-3">
-                        <StatusPill isOn={r.humidifier_status} onColor="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
+                        <StatusPill isOn={r.egg_rotation_motor_status} onColor="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" />
                       </td>
                       <td className="px-5 py-3">
-                        <StatusPill isOn={r.linear_actuator_status} onColor="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" />
+                        <StatusPill isOn={r.exhaust_fan_status} onColor="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400" />
+                      </td>
+                      <td className="px-5 py-3">
+                        <StatusPill isOn={r.inlet_fan_status} onColor="bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400" />
+                      </td>
+                      <td className="px-5 py-3">
+                        <StatusPill isOn={r.radiator_fan_status} onColor="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" />
                       </td>
                     </tr>
                   );

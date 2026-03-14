@@ -18,9 +18,11 @@ CREATE TABLE IF NOT EXISTS readings (
   temperature REAL,
   humidity REAL,
   soil_temperature REAL,
-  heater_status INTEGER,
-  humidifier_status INTEGER,
-  linear_actuator_status INTEGER,
+  pump_status INTEGER,
+  egg_rotation_motor_status INTEGER,
+  exhaust_fan_status INTEGER,
+  inlet_fan_status INTEGER,
+  radiator_fan_status INTEGER,
   timestamp DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(device_id, timestamp)
@@ -33,9 +35,11 @@ CREATE INDEX IF NOT EXISTS idx_readings_timestamp ON readings(timestamp DESC);
 CREATE TABLE IF NOT EXISTS actuator_states (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   device_id INTEGER NOT NULL UNIQUE REFERENCES devices(id) ON DELETE CASCADE,
-  heater INTEGER DEFAULT 0,
-  humidifier INTEGER DEFAULT 0,
-  linear_actuator INTEGER DEFAULT 0,
+  pump INTEGER DEFAULT 0,
+  egg_rotation_motor INTEGER DEFAULT 0,
+  exhaust_fan INTEGER DEFAULT 0,
+  inlet_fan INTEGER DEFAULT 0,
+  radiator_fan INTEGER DEFAULT 0,
   last_command_id TEXT,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +74,52 @@ CREATE TABLE IF NOT EXISTS command_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_command_logs_device ON command_logs(device_id, created_at DESC);
+
+-- Firmware Updates Table
+CREATE TABLE IF NOT EXISTS firmware_updates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  version TEXT NOT NULL,
+  download_url TEXT NOT NULL,
+  file_size INTEGER NOT NULL,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Data Loggers Table
+CREATE TABLE IF NOT EXISTS data_loggers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  serial_number TEXT UNIQUE,
+  api_key TEXT NOT NULL UNIQUE,
+  latitude REAL,
+  longitude REAL,
+  description TEXT,
+  last_seen DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_data_loggers_api_key ON data_loggers(api_key);
+
+-- Weather Readings Table
+CREATE TABLE IF NOT EXISTS weather_readings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  data_logger_id INTEGER NOT NULL REFERENCES data_loggers(id) ON DELETE CASCADE,
+  serial_number TEXT,
+  atmospheric_pressure REAL,
+  wind_speed REAL,
+  wind_direction REAL,
+  wind_gust REAL,
+  dew_point REAL,
+  humidity REAL,
+  temperature REAL,
+  light_intensity REAL,
+  water_temp REAL,
+  battery_voltage REAL,
+  rainfall REAL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_weather_logger_ts ON weather_readings(data_logger_id, timestamp DESC);
 
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (

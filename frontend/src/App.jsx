@@ -19,6 +19,8 @@ import { HistoryPage } from './pages/HistoryPage';
 import { DevicesPage } from './pages/DevicesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
+import { DataLoggersPage } from './pages/DataLoggersPage';
+import { DataLoggerDetailPage } from './pages/DataLoggerDetailPage';
 
 console.log('✅ All imports loaded');
 
@@ -112,6 +114,22 @@ const AppContent = () => {
             <AdminRoute>
               <AdminPage />
             </AdminRoute>
+          }
+        />
+        <Route
+          path="/data-loggers"
+          element={
+            <ProtectedRoute>
+              <DataLoggersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/data-loggers/:id"
+          element={
+            <ProtectedRoute>
+              <DataLoggerDetailPage />
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -9,8 +9,9 @@ router.get('/latest/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
 
     const result = await db.query(
-      `SELECT device_id, temperature, humidity, soil_temperature, heater_status, humidifier_status,
-              linear_actuator_status, timestamp
+      `SELECT device_id, temperature, humidity, soil_temperature,
+              pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
+              timestamp
        FROM readings
        WHERE device_id = ?
        ORDER BY timestamp DESC
@@ -24,9 +25,11 @@ router.get('/latest/:deviceId', async (req, res) => {
         temperature: null,
         humidity: null,
         soil_temperature: null,
-        heater_status: null,
-        humidifier_status: null,
-        linear_actuator_status: null,
+        pump_status: null,
+        egg_rotation_motor_status: null,
+        exhaust_fan_status: null,
+        inlet_fan_status: null,
+        radiator_fan_status: null,
         timestamp: null
       });
     }

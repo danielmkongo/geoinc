@@ -8,11 +8,12 @@ const router = express.Router();
 router.post('/send/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { heater, humidifier, linear_actuator } = req.body;
+    const { pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan } = req.body;
 
     // Validate input
-    if (heater === undefined || humidifier === undefined || linear_actuator === undefined) {
-      return res.status(400).json({ error: 'All actuator states required' });
+    if (pump === undefined || egg_rotation_motor === undefined || exhaust_fan === undefined
+        || inlet_fan === undefined || radiator_fan === undefined) {
+      return res.status(400).json({ error: 'All actuator states required (pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan)' });
     }
 
     const commandId = `cmd_${Date.now()}`;
@@ -25,7 +26,7 @@ router.post('/send/:deviceId', async (req, res) => {
         commandId,
         deviceId,
         'toggle_actuators',
-        JSON.stringify({ heater, humidifier, linear_actuator }),
+        JSON.stringify({ pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan }),
         'pending'
       ]
     );
@@ -34,20 +35,16 @@ router.post('/send/:deviceId', async (req, res) => {
     try {
       const { mqttService } = await import('../server.js');
       await mqttService.publishCommand(deviceId, {
-        heater,
-        humidifier,
-        linear_actuator
+        pump,
+        egg_rotation_motor,
+        exhaust_fan,
+        inlet_fan,
+        radiator_fan
       });
 
-      // Update command status to success
-      await db.query(
-        'UPDATE command_logs SET status = ?, acknowledged_at = CURRENT_TIMESTAMP WHERE id = ?',
-        ['success', commandId]
-      );
-
       res.json({
-        status: 'success',
-        message: 'Command published to MQTT',
+        status: 'pending',
+        message: 'Command sent to device — waiting for confirmation',
         commandId,
         timestamp: new Date()
       });

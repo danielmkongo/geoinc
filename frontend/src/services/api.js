@@ -91,6 +91,26 @@ export const adminAPI = {
   createDevice: (data) => apiClient.post('/admin/devices', data),
   updateDevice: (id, data) => apiClient.put(`/admin/devices/${id}`, data),
   deleteDevice: (id) => apiClient.delete(`/admin/devices/${id}`),
+  // Firmware / OTA (file upload via multipart form)
+  getFirmware: () => apiClient.get('/admin/firmware'),
+  pushFirmware: (formData) => apiClient.post('/admin/firmware', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deactivateFirmware: (id) => apiClient.post(`/admin/firmware/${id}/deactivate`),
+  deleteFirmware: (id) => apiClient.delete(`/admin/firmware/${id}`),
+  // Data Loggers (admin)
+  getDataLoggers: () => apiClient.get('/admin/data-loggers'),
+  createDataLogger: (data) => apiClient.post('/admin/data-loggers', data),
+  updateDataLogger: (id, data) => apiClient.put(`/admin/data-loggers/${id}`, data),
+  deleteDataLogger: (id) => apiClient.delete(`/admin/data-loggers/${id}`),
+};
+
+export const dataLoggersAPI = {
+  getAll: () => apiClient.get('/data-loggers'),
+  getById: (id) => apiClient.get(`/data-loggers/${id}`),
+  getLatest: (id) => apiClient.get(`/data-loggers/${id}/latest`),
+  getReadings: (id, startDate, endDate, limit = 500) =>
+    apiClient.get(`/data-loggers/${id}/readings`, { params: { startDate, endDate, limit } }),
 };
 
 export const profileAPI = {

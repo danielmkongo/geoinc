@@ -99,28 +99,44 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
         </div>
       )}
       <ActuatorRow
-        label="Heater"
-        icon="🔥"
-        isOn={actuatorStates.heater}
-        onToggle={() => handleToggle('heater')}
-        loading={!!pending.heater}
-        activeClass="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400"
-      />
-      <ActuatorRow
-        label="Humidifier"
+        label="Pump"
         icon="💧"
-        isOn={actuatorStates.humidifier}
-        onToggle={() => handleToggle('humidifier')}
-        loading={!!pending.humidifier}
+        isOn={actuatorStates.pump}
+        onToggle={() => handleToggle('pump')}
+        loading={!!pending.pump}
         activeClass="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-400"
       />
       <ActuatorRow
-        label="Linear Actuator"
-        icon="⚙️"
-        isOn={actuatorStates.linear_actuator}
-        onToggle={() => handleToggle('linear_actuator')}
-        loading={!!pending.linear_actuator}
-        activeClass="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/50 text-purple-600 dark:text-purple-400"
+        label="Egg Rotation Motor"
+        icon="🥚"
+        isOn={actuatorStates.egg_rotation_motor}
+        onToggle={() => handleToggle('egg_rotation_motor')}
+        loading={!!pending.egg_rotation_motor}
+        activeClass="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50 text-amber-600 dark:text-amber-400"
+      />
+      <ActuatorRow
+        label="Exhaust Fan"
+        icon="💨"
+        isOn={actuatorStates.exhaust_fan}
+        onToggle={() => handleToggle('exhaust_fan')}
+        loading={!!pending.exhaust_fan}
+        activeClass="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800/50 text-cyan-600 dark:text-cyan-400"
+      />
+      <ActuatorRow
+        label="Inlet Fan"
+        icon="🌀"
+        isOn={actuatorStates.inlet_fan}
+        onToggle={() => handleToggle('inlet_fan')}
+        loading={!!pending.inlet_fan}
+        activeClass="bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/50 text-sky-600 dark:text-sky-400"
+      />
+      <ActuatorRow
+        label="Radiator Fan"
+        icon="🌡️"
+        isOn={actuatorStates.radiator_fan}
+        onToggle={() => handleToggle('radiator_fan')}
+        loading={!!pending.radiator_fan}
+        activeClass="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50 text-orange-600 dark:text-orange-400"
       />
     </div>
   );
