@@ -122,11 +122,17 @@ export const HistoryPage = () => {
     }
   };
 
-  const formatTs = (ts) =>
-    new Date(ts).toLocaleString('en-US', {
+  const formatTs = (ts) => {
+    if (!ts) return '—';
+    const d = typeof ts === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)
+      ? new Date(ts.replace(' ', 'T') + 'Z')
+      : new Date(ts);
+    return d.toLocaleString('en-US', {
       month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
+      timeZone: 'Africa/Dar_es_Salaam',
     });
+  };
 
   const avgTemp = readings.length
     ? (readings.reduce((s, r) => s + r.temperature, 0) / readings.length).toFixed(2)
@@ -283,7 +289,7 @@ export const HistoryPage = () => {
                   return (
                     <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                       <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">
-                        {formatTs(r.timestamp)}
+                        {formatTs(r.created_at)}
                       </td>
                       <td className="px-5 py-3">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold

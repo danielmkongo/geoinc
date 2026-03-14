@@ -82,17 +82,20 @@ router.get('/historical/:deviceId', async (req, res) => {
     let query = 'SELECT * FROM readings WHERE device_id = ?';
     const params = [deviceId];
 
+    // Filter by created_at (server time — always accurate).
+    // Device-provided 'timestamp' may be wrong if the ESP32 had no NTP sync yet,
+    // causing those readings to appear with 1970 dates and get filtered out.
     if (startDate) {
-      query += ` AND timestamp >= ?`;
+      query += ` AND created_at >= ?`;
       params.push(new Date(startDate).toISOString());
     }
 
     if (endDate) {
-      query += ` AND timestamp <= ?`;
+      query += ` AND created_at <= ?`;
       params.push(new Date(endDate).toISOString());
     }
 
-    query += ` ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(parseInt(limit, 10));
     params.push(parseInt(offset, 10));
 
