@@ -83,16 +83,19 @@ router.get('/historical/:deviceId', async (req, res) => {
     const params = [deviceId];
 
     // Filter by created_at (server time — always accurate).
-    // Device-provided 'timestamp' may be wrong if the ESP32 had no NTP sync yet,
-    // causing those readings to appear with 1970 dates and get filtered out.
+    // SQLite stores created_at as "YYYY-MM-DD HH:MM:SS" (CURRENT_TIMESTAMP, no T/Z).
+    // We must compare using the same format — ISO strings with 'T' fail because
+    // SQLite string-compares space (ASCII 32) < 'T' (ASCII 84), excluding same-day rows.
+    const toSQLiteStr = (iso) => new Date(iso).toISOString().replace('T', ' ').slice(0, 19);
+
     if (startDate) {
       query += ` AND created_at >= ?`;
-      params.push(new Date(startDate).toISOString());
+      params.push(toSQLiteStr(startDate));
     }
 
     if (endDate) {
       query += ` AND created_at <= ?`;
-      params.push(new Date(endDate).toISOString());
+      params.push(toSQLiteStr(endDate));
     }
 
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;

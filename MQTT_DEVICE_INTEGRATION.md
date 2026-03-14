@@ -308,19 +308,26 @@ Platform                          Device
 ## Topic: Platform → Device — Incubation Reset
 
 ### `incubator/device1/device/reset_incubation`
-Published by the platform when a user presses **New Batch** on the dashboard. The device must clear its stored incubation start time (e.g. delete `/start_time.bin` from LittleFS) so the next telemetry cycle records a fresh start.
+Published by the platform when a user presses **New Batch** on the dashboard. The platform sets the incubation start time server-side and sends the exact timestamp to the device so both sides stay in sync.
 
 **QoS:** 1
 
 **Payload:**
 ```json
-{ "reset": true }
+{ "reset": true, "start_ts": 1741823400 }
 ```
+
+| Field      | Type    | Description                                                                  |
+|------------|---------|------------------------------------------------------------------------------|
+| `reset`    | boolean | Always `true`                                                                |
+| `start_ts` | int     | Unix epoch seconds (UTC) — the new incubation start as recorded by the server |
 
 **Device must:**
 1. Receive the message
-2. Delete or overwrite `/start_time.bin` (or equivalent) to clear the stored start timestamp
-3. Record the current time as the new incubation start on the next boot/cycle
+2. Write `start_ts` to `/start_time.bin` (or equivalent LittleFS file) — **use this value, not the current device clock**, so the platform and device agree on day 0
+3. Use this timestamp as day 0 for all subsequent incubation-day calculations
+
+> If the device is offline when the user presses **New Batch**, it will receive this message on next reconnect (QoS 1). Always persist `start_ts` to storage immediately on receipt.
 
 ---
 

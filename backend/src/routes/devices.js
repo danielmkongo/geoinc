@@ -82,20 +82,26 @@ router.put('/:deviceId/incubation-start', async (req, res) => {
       [deviceId]
     );
 
-    // Notify the device to clear its stored start time
-    try {
-      const { mqttService } = await import('../server.js');
-      await mqttService.publishIncubationReset();
-    } catch (mqttError) {
-      console.error('⚠️  MQTT incubation reset failed (non-fatal):', mqttError.message);
-    }
-
     const result = await db.query(
       'SELECT incubation_start FROM devices WHERE id = ?',
       [deviceId]
     );
 
-    res.json({ incubation_start: result.rows[0]?.incubation_start });
+    const incubationStart = result.rows[0]?.incubation_start;
+    // Convert stored datetime string to Unix epoch seconds for the device
+    const startTs = incubationStart
+      ? Math.floor(new Date(incubationStart.replace(' ', 'T') + 'Z').getTime() / 1000)
+      : Math.floor(Date.now() / 1000);
+
+    // Send start timestamp to device so it can write it to LittleFS
+    try {
+      const { mqttService } = await import('../server.js');
+      await mqttService.publishIncubationReset(startTs);
+    } catch (mqttError) {
+      console.error('⚠️  MQTT incubation reset failed (non-fatal):', mqttError.message);
+    }
+
+    res.json({ incubation_start: incubationStart });
   } catch (error) {
     console.error('❌ Reset incubation start error:', error);
     res.status(500).json({ error: 'Failed to reset incubation start' });

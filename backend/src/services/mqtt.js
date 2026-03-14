@@ -316,16 +316,20 @@ export class MQTTService {
     }
   }
 
-  publishIncubationReset() {
+  publishIncubationReset(startTimestamp) {
     if (!this.client || !this.isConnected) {
       return Promise.reject(new Error('MQTT broker not connected'));
     }
     const topic = `${process.env.DEVICE_TOPIC_PREFIX}/device/reset_incubation`;
+    const payload = JSON.stringify({
+      reset: true,
+      start_ts: startTimestamp, // Unix epoch seconds (UTC) — device writes this to LittleFS
+    });
     return new Promise((resolve, reject) => {
-      this.client.publish(topic, JSON.stringify({ reset: true }), { qos: 1 }, (error) => {
+      this.client.publish(topic, payload, { qos: 1 }, (error) => {
         if (error) reject(error);
         else {
-          console.log('✅ Incubation reset published to device');
+          console.log('✅ Incubation reset published to device, start_ts:', startTimestamp);
           resolve();
         }
       });
