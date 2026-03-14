@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass,
+  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass, MdEgg,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
@@ -10,8 +10,10 @@ import { useDeviceData } from '../hooks/useDeviceData';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceStore } from '../store/deviceStore';
 import { useAlertStore } from '../store/alertStore';
-import { alertsAPI } from '../services/api';
+import { alertsAPI, devicesAPI } from '../services/api';
 import { formatRelativeTime } from '../utils/formatters';
+
+const TZ = 'Africa/Dar_es_Salaam';
 
 const StatCard = ({ title, value, unit, icon: Icon, iconBg, borderClass, trend, trendClass, subtitle }) => (
   <div className={`relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 p-5 lg:p-6 ${borderClass}`}>
@@ -37,11 +39,14 @@ const Dashboard = () => {
   const currentReading = useDeviceStore((state) => state.currentReading);
   const actuatorStates = useDeviceStore((state) => state.actuatorStates);
   const lastUpdate = useDeviceStore((state) => state.lastUpdate);
+  const incubationStart = useDeviceStore((state) => state.incubationStart);
+  const setIncubationStart = useDeviceStore((state) => state.setIncubationStart);
   const { loading, error } = useDeviceData(deviceId);
   const alerts = useAlertStore((state) => state.alerts);
   const setAlerts = useAlertStore((state) => state.setAlerts);
   const [alertsLoaded, setAlertsLoaded] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [resetting, setResetting] = useState(false);
 
   useWebSocket();
 
@@ -64,6 +69,20 @@ const Dashboard = () => {
     loadAlerts();
   }, [deviceId, setAlerts]);
 
+  const handleNewBatch = async () => {
+    if (!window.confirm('Start a new incubation batch? This will reset the incubation timer to today and notify the device to clear its stored start date.')) return;
+    try {
+      setResetting(true);
+      const res = await devicesAPI.resetIncubationStart(deviceId);
+      setIncubationStart(res.data.incubation_start);
+    } catch (err) {
+      console.error('Failed to reset incubation start:', err);
+      alert('Failed to reset incubation start. Please try again.');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (loading || !alertsLoaded) return <LoadingSpinner fullScreen />;
 
   const temperature = currentReading?.temperature ?? 0;
@@ -74,28 +93,48 @@ const Dashboard = () => {
   const tempNormal = temperature >= 36 && temperature <= 39;
   const humidNormal = humidity >= 40 && humidity <= 70;
 
+  // Incubation day calculation
+  let incubationDay = null;
+  if (incubationStart) {
+    const startMs = typeof incubationStart === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(incubationStart)
+      ? new Date(incubationStart.replace(' ', 'T') + 'Z').getTime()
+      : new Date(incubationStart).getTime();
+    incubationDay = Math.floor((Date.now() - startMs) / (1000 * 60 * 60 * 24)) + 1;
+    if (incubationDay < 1) incubationDay = 1;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 lg:p-8 pt-16 lg:pt-8">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
           <p className="text-gray-400 dark:text-gray-500 mt-1 text-sm">
-            {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: TZ })}
             {' · '}
-            <span className="font-mono">{now.toLocaleTimeString()}</span>
+            <span className="font-mono">{now.toLocaleTimeString('en-US', { timeZone: TZ })}</span>
           </p>
         </div>
-        {isOnline ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            Live
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-600 dark:text-red-400 text-xs font-semibold">
-            <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-            Offline
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleNewBatch}
+            disabled={resetting}
+            className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+          >
+            <MdEgg size={14} />
+            {resetting ? 'Resetting...' : 'New Batch'}
+          </button>
+          {isOnline ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Live
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-600 dark:text-red-400 text-xs font-semibold">
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+              Offline
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -104,7 +143,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 lg:gap-5 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-5 mb-6">
         <StatCard
           title="Temperature"
           value={temperature.toFixed(1)}
@@ -135,6 +174,17 @@ const Dashboard = () => {
           borderClass="border-teal-100 dark:border-teal-900/30"
           iconBg="bg-gradient-to-br from-teal-400 to-teal-600 shadow-teal-400/40"
           subtitle="Soil / water temp"
+        />
+        <StatCard
+          title="Incubation Day"
+          value={incubationDay !== null ? `${incubationDay}` : '—'}
+          unit={incubationDay !== null ? '/ 21' : ''}
+          icon={MdEgg}
+          borderClass={incubationDay !== null && incubationDay > 18 ? 'border-emerald-200 dark:border-emerald-900/40' : 'border-amber-100 dark:border-amber-900/30'}
+          iconBg={incubationDay !== null && incubationDay > 18 ? 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-emerald-400/40' : 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-400/40'}
+          trend={incubationDay !== null && incubationDay > 18 ? 'Hatching soon' : incubationDay !== null ? 'In progress' : 'Not set'}
+          trendClass={incubationDay !== null && incubationDay > 18 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}
+          subtitle={incubationDay !== null ? `${Math.max(0, 21 - incubationDay)} days remaining` : 'Click New Batch to start'}
         />
         <StatCard
           title="Alerts"

@@ -8,6 +8,8 @@ const parseDate = (date) => {
   return new Date(date);
 };
 
+const TZ = 'Africa/Dar_es_Salaam';
+
 export const formatDate = (date) => {
   if (!date) return 'N/A';
   return parseDate(date).toLocaleDateString('en-US', {
@@ -15,7 +17,8 @@ export const formatDate = (date) => {
     day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: TZ,
   });
 };
 
@@ -24,13 +27,14 @@ export const formatTime = (date) => {
   return parseDate(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
+    timeZone: TZ,
   });
 };
 
 export const formatRelativeTime = (date) => {
   if (!date) return 'Unknown';
-  
+
   const now = new Date();
   const diff = now - parseDate(date);
   const seconds = Math.floor(diff / 1000);

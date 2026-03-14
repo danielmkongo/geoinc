@@ -26,6 +26,7 @@ export const useDeviceStore = create((set) => ({
   },
   lastUpdate: null,
   isLoadingReadings: false,
+  incubationStart: null,
 
   setDeviceId: (deviceId) => {
     storageService.setDevicePreference(deviceId);
@@ -75,5 +76,9 @@ export const useDeviceStore = create((set) => ({
 
   setLoadingReadings: (isLoading) => {
     set({ isLoadingReadings: isLoading });
+  },
+
+  setIncubationStart: (date) => {
+    set({ incubationStart: date });
   },
 }));

@@ -66,6 +66,12 @@ async function setupDatabase() {
       // Table already exists — safe to ignore
     }
 
+    // Incubation start date column
+    try {
+      db.exec('ALTER TABLE devices ADD COLUMN incubation_start DATETIME');
+      console.log('✅ Migration: devices.incubation_start added');
+    } catch (_) {}
+
     // Data loggers tables
     try {
       db.exec(`CREATE TABLE IF NOT EXISTS data_loggers (

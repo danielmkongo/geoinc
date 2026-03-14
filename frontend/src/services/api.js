@@ -36,6 +36,7 @@ export const devicesAPI = {
   getAll: () => apiClient.get('/devices'),
   getById: (deviceId) => apiClient.get(`/devices/${deviceId}`),
   getStatus: (deviceId) => apiClient.get(`/devices/${deviceId}/status`),
+  resetIncubationStart: (deviceId) => apiClient.put(`/devices/${deviceId}/incubation-start`),
 };
 
 export const readingsAPI = {

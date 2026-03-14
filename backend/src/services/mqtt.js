@@ -175,9 +175,9 @@ export class MQTTService {
       const { pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan } = data;
 
       await db.query(
-        `INSERT INTO actuator_states (device_id, pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan, updated_at)
+        `INSERT OR REPLACE INTO actuator_states (device_id, pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [1, pump || false, egg_rotation_motor || false, exhaust_fan || false, inlet_fan || false, radiator_fan || false]
+        [1, pump ? 1 : 0, egg_rotation_motor ? 1 : 0, exhaust_fan ? 1 : 0, inlet_fan ? 1 : 0, radiator_fan ? 1 : 0]
       );
 
       // Mark the most recent pending command as confirmed
@@ -314,6 +314,22 @@ export class MQTTService {
     } catch (error) {
       console.error('❌ handleCommandRequest error:', error);
     }
+  }
+
+  publishIncubationReset() {
+    if (!this.client || !this.isConnected) {
+      return Promise.reject(new Error('MQTT broker not connected'));
+    }
+    const topic = `${process.env.DEVICE_TOPIC_PREFIX}/device/reset_incubation`;
+    return new Promise((resolve, reject) => {
+      this.client.publish(topic, JSON.stringify({ reset: true }), { qos: 1 }, (error) => {
+        if (error) reject(error);
+        else {
+          console.log('✅ Incubation reset published to device');
+          resolve();
+        }
+      });
+    });
   }
 
   publishCommand(deviceId, command) {

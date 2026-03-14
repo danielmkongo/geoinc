@@ -21,16 +21,17 @@ This document describes the MQTT protocol contract between the Incubator device 
 
 ## Topic Overview
 
-| Direction         | Topic                                      | Purpose                          |
-|-------------------|--------------------------------------------|----------------------------------|
-| Device → Platform | `incubator/device1/telemetry/data`          | Sensor readings                        |
-| Device → Platform | `incubator/device1/device/status`           | Current actuator states                |
-| Device → Platform | `incubator/device1/device/online`           | Online/heartbeat signal                |
-| Device → Platform | `incubator/device1/device/request_commands` | Request last command after reconnect   |
-| Device → Platform | `incubator/device1/system/alerts`           | Device-generated alerts                |
-| Device → Platform | `incubator/device1/system/errors`           | Error messages                         |
-| Device → Platform | `incubator/device1/actuator/feedback`       | Confirmation after command             |
-| Platform → Device | `incubator/device1/actuator/commands`       | Commands to control actuators          |
+| Direction         | Topic                                        | Purpose                                |
+|-------------------|----------------------------------------------|----------------------------------------|
+| Device → Platform | `incubator/device1/telemetry/data`           | Sensor readings                        |
+| Device → Platform | `incubator/device1/device/status`            | Current actuator states                |
+| Device → Platform | `incubator/device1/device/online`            | Online/heartbeat signal                |
+| Device → Platform | `incubator/device1/device/request_commands`  | Request last command after reconnect   |
+| Device → Platform | `incubator/device1/system/alerts`            | Device-generated alerts                |
+| Device → Platform | `incubator/device1/system/errors`            | Error messages                         |
+| Device → Platform | `incubator/device1/actuator/feedback`        | Confirmation after command             |
+| Platform → Device | `incubator/device1/actuator/commands`        | Commands to control actuators          |
+| Platform → Device | `incubator/device1/device/reset_incubation`  | Reset incubation start date on device  |
 
 ---
 
@@ -302,22 +303,63 @@ Platform                          Device
 
 ---
 
+---
+
+## Topic: Platform → Device — Incubation Reset
+
+### `incubator/device1/device/reset_incubation`
+Published by the platform when a user presses **New Batch** on the dashboard. The device must clear its stored incubation start time (e.g. delete `/start_time.bin` from LittleFS) so the next telemetry cycle records a fresh start.
+
+**QoS:** 1
+
+**Payload:**
+```json
+{ "reset": true }
+```
+
+**Device must:**
+1. Receive the message
+2. Delete or overwrite `/start_time.bin` (or equivalent) to clear the stored start timestamp
+3. Record the current time as the new incubation start on the next boot/cycle
+
+---
+
+## Timestamps and Timezone
+
+All `timestamp` values in telemetry payloads must be **Unix epoch seconds in UTC**. Example:
+
+```cpp
+// Arduino / ESP32 (NTP synced)
+time_t now;
+time(&now);                 // seconds since 1970-01-01 00:00:00 UTC
+payload["timestamp"] = now;
+```
+
+The platform displays all times in **East Africa Time (EAT, UTC+3)** — Tanzania / Nairobi timezone. No conversion is needed on the device side; just send UTC epoch seconds.
+
+---
+
 ## Recommended Device Loop
 
 ```
 on boot / reconnect:
   connect to MQTT broker
   subscribe to: incubator/device1/actuator/commands
+  subscribe to: incubator/device1/device/reset_incubation
   publish to:   incubator/device1/device/online           { online: true }
   publish to:   incubator/device1/device/request_commands { reason: "reconnect", fv: FIRMWARE_VERSION }
   // platform will respond with last command on actuator/commands
 
 every 5-10 seconds:
   read sensors
-  publish to: incubator/device1/telemetry/data  { temperature, humidity, ..., timestamp }
+  publish to: incubator/device1/telemetry/data  { temperature, humidity, ..., timestamp (UTC epoch seconds) }
 
 on message received on actuator/commands:
   parse payload
   apply pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan states
   publish to: incubator/device1/device/status  { pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan }
+
+on message received on device/reset_incubation:
+  delete /start_time.bin (or equivalent LittleFS file)
+  record current time as new incubation start
 ```
