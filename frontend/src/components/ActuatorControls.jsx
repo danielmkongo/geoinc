@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { MdLockOpen, MdLock } from 'react-icons/md';
 import { useDeviceStore } from '../store/deviceStore';
 import { commandsAPI } from '../services/api';
+
+const LED = ({ isOn, loading }) => (
+  <span className="relative flex h-3 w-3 flex-shrink-0">
+    {isOn && !loading && (
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+    )}
+    <span className={`relative inline-flex rounded-full h-3 w-3 transition-colors duration-300
+      ${loading ? 'bg-amber-400 animate-pulse' : isOn ? 'bg-emerald-500 shadow-[0_0_6px_2px_rgba(52,211,153,0.6)]' : 'bg-red-500 shadow-[0_0_4px_1px_rgba(239,68,68,0.4)]'}`}
+    />
+  </span>
+);
 
 const ToggleSwitch = ({ isOn, onChange, disabled }) => (
   <button
@@ -8,9 +20,9 @@ const ToggleSwitch = ({ isOn, onChange, disabled }) => (
     aria-checked={isOn}
     onClick={onChange}
     disabled={disabled}
-    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800
+    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800
       ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-      ${isOn ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-600'}`}
+      ${isOn ? 'bg-emerald-500 focus:ring-emerald-500' : 'bg-red-400 dark:bg-red-500/70 focus:ring-red-400'}`}
   >
     <span
       className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200
@@ -19,19 +31,20 @@ const ToggleSwitch = ({ isOn, onChange, disabled }) => (
   </button>
 );
 
-const ActuatorRow = ({ label, icon, isOn, onToggle, loading, activeClass }) => (
+const ActuatorRow = ({ label, icon, isOn, onToggle, loading, activeClass, overrideEnabled }) => (
   <div className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200
     ${isOn ? activeClass : 'bg-gray-50 dark:bg-slate-700/40 border-gray-200 dark:border-slate-600/50'}`}>
     <div className="flex items-center gap-3">
-      <span className="text-2xl">{icon}</span>
+      <LED isOn={isOn} loading={loading} />
+      <span className="text-xl">{icon}</span>
       <div>
         <p className="font-semibold text-gray-900 dark:text-white text-sm">{label}</p>
-        <p className={`text-xs font-medium ${isOn ? 'text-current opacity-70' : 'text-gray-400 dark:text-gray-500'}`}>
-          {loading ? 'Waiting for confirmation...' : isOn ? 'Active' : 'Inactive'}
+        <p className={`text-xs font-medium ${isOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+          {loading ? 'Sending...' : isOn ? 'ON — Active' : 'OFF — Inactive'}
         </p>
       </div>
     </div>
-    <ToggleSwitch isOn={isOn} onChange={onToggle} disabled={loading} />
+    <ToggleSwitch isOn={isOn} onChange={onToggle} disabled={loading || !overrideEnabled} />
   </div>
 );
 
@@ -39,6 +52,7 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
   const actuatorStates = useDeviceStore((state) => state.actuatorStates);
   const [pending, setPending] = useState({});
   const [feedback, setFeedback] = useState(null);
+  const [overrideEnabled, setOverrideEnabled] = useState(false);
   const prevStatesRef = useRef(actuatorStates);
   const timeoutsRef = useRef({});
 
@@ -87,10 +101,52 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
     }
   };
 
+  const actuators = [
+    { key: 'pump',              label: 'Pump',               icon: '💧', activeClass: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' },
+    { key: 'egg_rotation_motor',label: 'Egg Rotation Motor', icon: '🥚', activeClass: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' },
+    { key: 'exhaust_fan',       label: 'Exhaust Fan',        icon: '💨', activeClass: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' },
+    { key: 'inlet_fan',         label: 'Inlet Fan',          icon: '🌀', activeClass: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' },
+    { key: 'radiator_fan',      label: 'Radiator Fan',       icon: '🌡️', activeClass: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' },
+  ];
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Override toggle */}
+      <div className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all
+        ${overrideEnabled
+          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700/60'
+          : 'bg-gray-50 dark:bg-slate-700/40 border-gray-200 dark:border-slate-600/50'
+        }`}>
+        <div className="flex items-center gap-2.5">
+          {overrideEnabled
+            ? <MdLockOpen size={18} className="text-amber-500" />
+            : <MdLock size={18} className="text-gray-400 dark:text-slate-400" />
+          }
+          <div>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Manual Override</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              {overrideEnabled ? 'Enabled — toggles are active' : 'Disabled — device controls automatically'}
+            </p>
+          </div>
+        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={overrideEnabled}
+            onChange={(e) => setOverrideEnabled(e.target.checked)}
+          />
+          <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-400 transition-colors duration-200
+            ${overrideEnabled ? 'bg-amber-500' : 'bg-gray-200 dark:bg-slate-600'}
+            after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-200
+            peer-checked:after:translate-x-5`}
+          />
+        </label>
+      </div>
+
+      {/* Feedback */}
       {feedback && (
-        <div className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 animate-slideIn
+        <div className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2
           ${feedback.type === 'success'
             ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400'
             : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400'
@@ -98,46 +154,20 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
           {feedback.type === 'success' ? '✓' : '✕'} {feedback.msg}
         </div>
       )}
-      <ActuatorRow
-        label="Pump"
-        icon="💧"
-        isOn={actuatorStates.pump}
-        onToggle={() => handleToggle('pump')}
-        loading={!!pending.pump}
-        activeClass="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-400"
-      />
-      <ActuatorRow
-        label="Egg Rotation Motor"
-        icon="🥚"
-        isOn={actuatorStates.egg_rotation_motor}
-        onToggle={() => handleToggle('egg_rotation_motor')}
-        loading={!!pending.egg_rotation_motor}
-        activeClass="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50 text-amber-600 dark:text-amber-400"
-      />
-      <ActuatorRow
-        label="Exhaust Fan"
-        icon="💨"
-        isOn={actuatorStates.exhaust_fan}
-        onToggle={() => handleToggle('exhaust_fan')}
-        loading={!!pending.exhaust_fan}
-        activeClass="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800/50 text-cyan-600 dark:text-cyan-400"
-      />
-      <ActuatorRow
-        label="Inlet Fan"
-        icon="🌀"
-        isOn={actuatorStates.inlet_fan}
-        onToggle={() => handleToggle('inlet_fan')}
-        loading={!!pending.inlet_fan}
-        activeClass="bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/50 text-sky-600 dark:text-sky-400"
-      />
-      <ActuatorRow
-        label="Radiator Fan"
-        icon="🌡️"
-        isOn={actuatorStates.radiator_fan}
-        onToggle={() => handleToggle('radiator_fan')}
-        loading={!!pending.radiator_fan}
-        activeClass="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50 text-orange-600 dark:text-orange-400"
-      />
+
+      {/* Actuator rows */}
+      {actuators.map(({ key, label, icon, activeClass }) => (
+        <ActuatorRow
+          key={key}
+          label={label}
+          icon={icon}
+          isOn={!!actuatorStates[key]}
+          onToggle={() => handleToggle(key)}
+          loading={!!pending[key]}
+          activeClass={activeClass}
+          overrideEnabled={overrideEnabled}
+        />
+      ))}
     </div>
   );
 };
