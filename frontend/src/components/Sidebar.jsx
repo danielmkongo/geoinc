@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logo from '../assets/logo.png';
 import { Link, useLocation } from 'react-router-dom';
 import {
   MdDashboard, MdSettings, MdHistory, MdClose, MdMenu, MdLogout,
@@ -85,8 +86,8 @@ export const Sidebar = () => {
         {/* Logo */}
         <div className="p-5 border-b border-slate-700/50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-green-500/40 flex-shrink-0">
-              <span className="text-xl">🌱</span>
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-white">
+              <img src={logo} alt="TGDC" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
               <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
