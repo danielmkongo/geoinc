@@ -889,6 +889,7 @@ export const AdminPage = () => {
             <Field label="Role">
               <select className={inputCls} value={formData.role} onChange={(e) => update('role', e.target.value)}>
                 <option value="user">User</option>
+                <option value="operator">Operator</option>
                 <option value="admin">Admin</option>
               </select>
             </Field>
@@ -916,6 +917,7 @@ export const AdminPage = () => {
             <Field label="Role">
               <select className={inputCls} value={formData.role} onChange={(e) => update('role', e.target.value)}>
                 <option value="user">User</option>
+                <option value="operator">Operator</option>
                 <option value="admin">Admin</option>
               </select>
             </Field>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MdLockOpen, MdLock } from 'react-icons/md';
 import { useDeviceStore } from '../store/deviceStore';
 import { commandsAPI } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 const LED = ({ isOn, loading }) => (
   <span className="relative flex h-3 w-3 flex-shrink-0">
@@ -49,6 +50,9 @@ const ActuatorRow = ({ label, icon, isOn, onToggle, loading, activeClass, overri
 );
 
 export const ActuatorControls = ({ deviceId = '1' }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const canControl = isAdmin || user?.role === 'operator';
   const actuatorStates = useDeviceStore((state) => state.actuatorStates);
   const [pending, setPending] = useState({});
   const [feedback, setFeedback] = useState(null);
@@ -111,8 +115,16 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
 
   return (
     <div className="space-y-4">
-      {/* Override toggle */}
-      <div className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all
+      {/* Read-only notice for viewers */}
+      {!canControl && (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl border bg-slate-50 dark:bg-slate-700/40 border-slate-200 dark:border-slate-600/50">
+          <MdLock size={16} className="text-slate-400 flex-shrink-0" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">View only — admins and operators can control actuators</p>
+        </div>
+      )}
+
+      {/* Override toggle — admin/operator only */}
+      {canControl && <div className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all
         ${overrideEnabled
           ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700/60'
           : 'bg-gray-50 dark:bg-slate-700/40 border-gray-200 dark:border-slate-600/50'
@@ -154,7 +166,7 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
             peer-checked:after:translate-x-5`}
           />
         </label>
-      </div>
+      </div>}
 
       {/* Feedback */}
       {feedback && (
@@ -177,7 +189,7 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
           onToggle={() => handleToggle(key)}
           loading={!!pending[key]}
           activeClass={activeClass}
-          overrideEnabled={overrideEnabled}
+          overrideEnabled={canControl && overrideEnabled}
         />
       ))}
     </div>
