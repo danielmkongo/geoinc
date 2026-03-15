@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import db from '../db/connection.js';
+import { sendInvitationEmail } from '../services/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +65,17 @@ router.post('/users', async (req, res) => {
       'SELECT id, username, email, full_name, role, is_active, created_at FROM users WHERE rowid = ?',
       [result.rows[0].lastInsertRowid]
     );
+
+    // Send invitation email if the user has an email address
+    if (email) {
+      sendInvitationEmail({
+        to: email,
+        username,
+        password,
+        fullName: full_name,
+      }).catch((err) => console.error('Failed to send invitation email:', err));
+    }
+
     res.status(201).json({ user: user.rows[0] });
   } catch (error) {
     console.error('Create user error:', error);

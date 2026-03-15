@@ -119,6 +119,7 @@ export const DataLoggerDetailPage = () => {
   const [mapTypeId, setMapTypeId] = useState('hybrid');
   const [infoOpen, setInfoOpen] = useState(false);
   const { isLoaded: mapsLoaded } = useLoadScript({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY });
+  const mapRef = useRef(null);
   const [activePreset, setActivePreset] = useState('7d');
   const [customStart, setCustomStart] = useState(() => toInputValue(new Date(Date.now() - 7 * 86400000)));
   const [customEnd, setCustomEnd] = useState(() => toInputValue(new Date()));
@@ -405,8 +406,8 @@ export const DataLoggerDetailPage = () => {
                 mapContainerStyle={{ height: '420px', width: '100%' }}
                 center={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
                 zoom={15}
-                mapTypeId={mapTypeId}
-                options={{ disableDefaultUI: true, zoomControl: true }}
+                options={{ disableDefaultUI: true, zoomControl: true, keyboardShortcuts: false, mapTypeId }}
+                onLoad={(map) => { mapRef.current = map; map.setMapTypeId(mapTypeId); }}
               >
                 <Marker
                   position={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
@@ -435,7 +436,11 @@ export const DataLoggerDetailPage = () => {
               </GoogleMap>
             )}
             <button
-              onClick={() => setMapTypeId((t) => t === 'hybrid' ? 'roadmap' : 'hybrid')}
+              onClick={() => {
+                const next = mapTypeId === 'hybrid' ? 'roadmap' : 'hybrid';
+                setMapTypeId(next);
+                mapRef.current?.setMapTypeId(next);
+              }}
               className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
             >
               {mapTypeId === 'hybrid' ? <><MdMap size={15} /> Street</> : <><MdSatellite size={15} /> Satellite</>}

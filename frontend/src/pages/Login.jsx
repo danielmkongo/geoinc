@@ -40,8 +40,8 @@ export const LoginPage = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/40 mb-4">
             <span className="text-3xl">🥚</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">Geothermal Incubator</h1>
-          <p className="text-slate-400 text-sm mt-1">Egg Incubation Control System</p>
+          <h1 className="text-2xl font-bold text-white">Joto Ardhi</h1>
+          <p className="text-slate-400 text-sm mt-1">IoT Monitoring Platform</p>
         </div>
 
         {/* Card */}
@@ -109,7 +109,7 @@ export const LoginPage = () => {
         </div>
 
         <p className="text-center text-slate-600 text-xs mt-6">
-          Geothermal · Real-time monitoring · MQTT
+          TGDC · Real-time monitoring · MQTT
         </p>
       </div>
     </div>

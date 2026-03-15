@@ -148,7 +148,11 @@ const LoggerMap = ({ position, onChange }) => {
         </div>
         <button
           type="button"
-          onClick={() => setMapTypeId((t) => t === 'hybrid' ? 'roadmap' : 'hybrid')}
+          onClick={() => {
+            const next = mapTypeId === 'hybrid' ? 'roadmap' : 'hybrid';
+            setMapTypeId(next);
+            mapRef.current?.setMapTypeId(next);
+          }}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors shrink-0"
         >
           {mapTypeId === 'hybrid' ? <><MdMap size={14} /> Street</> : <><MdSatellite size={14} /> Satellite</>}
@@ -166,10 +170,9 @@ const LoggerMap = ({ position, onChange }) => {
             mapContainerStyle={{ height: '100%', width: '100%' }}
             center={position ?? { lat: -6.369028, lng: 34.888822 }}
             zoom={position ? 13 : 6}
-            mapTypeId={mapTypeId}
             options={MAP_OPTIONS}
             onClick={handleMapClick}
-            onLoad={(map) => { mapRef.current = map; }}
+            onLoad={(map) => { mapRef.current = map; map.setMapTypeId(mapTypeId); }}
           >
             {position && <Marker position={position} />}
           </GoogleMap>

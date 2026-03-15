@@ -23,6 +23,9 @@ const migrations = [
   'ALTER TABLE devices ADD COLUMN longitude REAL',
   'ALTER TABLE devices ADD COLUMN location_name TEXT',
   'ALTER TABLE readings RENAME COLUMN soil_temperature TO water_temperature',
+  'ALTER TABLE users ADD COLUMN email TEXT',
+  'ALTER TABLE users ADD COLUMN full_name TEXT',
+  'ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1',
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* column already exists — skip */ }
