@@ -5,49 +5,45 @@ import {
   MdShield, MdPerson, MdSystemUpdate, MdCancel, MdContentCopy,
   MdRouter, MdCloudUpload, MdLocationOn, MdSearch, MdSatellite, MdMap,
 } from 'react-icons/md';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import { adminAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { formatRelativeTime, isWithinMinutes } from '../utils/formatters';
 
-// Fix Leaflet default marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
 // ─── Map helpers ──────────────────────────────────────────────────────────────
 
-// Flies map to a position when flyTo changes
-const MapController = ({ flyTo }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (flyTo) map.flyTo([flyTo.lat, flyTo.lng], flyTo.zoom ?? 13, { duration: 1.2 });
-  }, [flyTo, map]);
-  return null;
+const MAP_OPTIONS = {
+  disableDefaultUI: true,
+  zoomControl: true,
+  keyboardShortcuts: false,
+  clickableIcons: false,
 };
 
-const TILES = {
-  street: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-  },
-};
-
-// Map with search + satellite toggle — used in logger modals
+// Map with search + coordinate inputs + satellite toggle — used in logger modals
 const LoggerMap = ({ position, onChange }) => {
+  const { isLoaded } = useLoadScript({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY });
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [layer, setLayer] = useState('street');
-  const [flyTo, setFlyTo] = useState(null);
+  const [mapTypeId, setMapTypeId] = useState('roadmap');
+  const [latInput, setLatInput] = useState(position?.lat?.toFixed(6) ?? '');
+  const [lngInput, setLngInput] = useState(position?.lng?.toFixed(6) ?? '');
+  const mapRef = useRef(null);
+
+  // Keep input fields in sync when position changes externally (map click / search pick)
+  useEffect(() => {
+    if (position) {
+      setLatInput(position.lat.toFixed(6));
+      setLngInput(position.lng.toFixed(6));
+    }
+  }, [position]);
+
+  const applyCoords = (lat, lng) => {
+    if (isNaN(lat) || isNaN(lng)) return;
+    onChange({ lat, lng });
+    mapRef.current?.panTo({ lat, lng });
+    mapRef.current?.setZoom(14);
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -70,10 +66,19 @@ const LoggerMap = ({ position, onChange }) => {
   const pickResult = (r) => {
     const lat = parseFloat(r.lat);
     const lng = parseFloat(r.lon);
-    onChange({ lat, lng });
-    setFlyTo({ lat, lng, zoom: 14 });
+    applyCoords(lat, lng);
     setResults([]);
     setQuery(r.display_name.split(',')[0]);
+  };
+
+  const handleMapClick = useCallback((e) => {
+    applyCoords(e.latLng.lat(), e.latLng.lng());
+  }, []);
+
+  const handleCoordBlur = () => {
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+    applyCoords(lat, lng);
   };
 
   return (
@@ -95,7 +100,6 @@ const LoggerMap = ({ position, onChange }) => {
           {searching ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MdSearch size={16} />}
           Search
         </button>
-        {/* Search results dropdown */}
         {results.length > 0 && (
           <div className="absolute top-full left-0 right-16 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-[1000] overflow-hidden">
             {results.map((r) => (
@@ -113,32 +117,64 @@ const LoggerMap = ({ position, onChange }) => {
         )}
       </form>
 
-      {/* Layer toggle + selected coords */}
-      <div className="flex items-center justify-between">
-        {position ? (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400">
-            Selected: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
-          </p>
-        ) : (
-          <p className="text-xs text-gray-400 dark:text-slate-500">Click map to place pin</p>
-        )}
+      {/* Editable coordinate inputs + satellite toggle */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-1">
+          <label className="text-xs text-gray-400 dark:text-slate-500 w-6 shrink-0">Lat</label>
+          <input
+            type="number"
+            step="any"
+            value={latInput}
+            onChange={(e) => setLatInput(e.target.value)}
+            onBlur={handleCoordBlur}
+            onKeyDown={(e) => e.key === 'Enter' && handleCoordBlur()}
+            placeholder="–6.369028"
+            className="flex-1 px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 flex-1">
+          <label className="text-xs text-gray-400 dark:text-slate-500 w-6 shrink-0">Lng</label>
+          <input
+            type="number"
+            step="any"
+            value={lngInput}
+            onChange={(e) => setLngInput(e.target.value)}
+            onBlur={handleCoordBlur}
+            onKeyDown={(e) => e.key === 'Enter' && handleCoordBlur()}
+            placeholder="34.888822"
+            className="flex-1 px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+          />
+        </div>
         <button
           type="button"
-          onClick={() => setLayer((l) => l === 'street' ? 'satellite' : 'street')}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+          onClick={() => setMapTypeId((t) => t === 'roadmap' ? 'satellite' : 'roadmap')}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors shrink-0"
         >
-          {layer === 'street' ? <><MdSatellite size={14} /> Satellite</> : <><MdMap size={14} /> Street</>}
+          {mapTypeId === 'roadmap' ? <><MdSatellite size={14} /> Satellite</> : <><MdMap size={14} /> Street</>}
         </button>
       </div>
 
       {/* Map */}
       <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600" style={{ height: 280 }}>
-        <MapContainer center={[-1.286389, 36.817223]} zoom={6} style={{ height: '100%', width: '100%' }} attributionControl={false}>
-          <TileLayer url={TILES[layer].url} />
-          <MapController flyTo={flyTo} />
-          <MapPinPicker position={position} onChange={onChange} />
-        </MapContainer>
+        {!isLoaded ? (
+          <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-slate-800">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <GoogleMap
+            mapContainerStyle={{ height: '100%', width: '100%' }}
+            center={position ?? { lat: -6.369028, lng: 34.888822 }}
+            zoom={position ? 13 : 6}
+            mapTypeId={mapTypeId}
+            options={MAP_OPTIONS}
+            onClick={handleMapClick}
+            onLoad={(map) => { mapRef.current = map; }}
+          >
+            {position && <Marker position={position} />}
+          </GoogleMap>
+        )}
       </div>
+      <p className="text-xs text-gray-400 dark:text-slate-500">Click map to place pin, or type coordinates above</p>
     </div>
   );
 };
@@ -206,17 +242,6 @@ const RoleBadge = ({ role }) =>
       <MdPerson size={11} /> user
     </span>
   );
-
-// ─── Map Pin Picker ───────────────────────────────────────────────────────────
-
-const MapPinPicker = ({ position, onChange }) => {
-  useMapEvents({
-    click(e) {
-      onChange({ lat: e.latlng.lat, lng: e.latlng.lng });
-    },
-  });
-  return position ? <Marker position={[position.lat, position.lng]} /> : null;
-};
 
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 

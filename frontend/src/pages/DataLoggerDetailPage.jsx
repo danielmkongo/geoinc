@@ -4,22 +4,13 @@ import {
   MdArrowBack, MdRefresh, MdDownload, MdCalendarToday, MdFilterList,
   MdLocationOn, MdSensors, MdTableChart, MdBarChart, MdSatellite, MdMap,
 } from 'react-icons/md';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import { GoogleMap, Marker, InfoWindow, useLoadScript } from '@react-google-maps/api';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { dataLoggersAPI } from '../services/api';
 import { parseDate, formatRelativeTime } from '../utils/formatters';
-
-// Fix leaflet default marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -125,7 +116,9 @@ export const DataLoggerDetailPage = () => {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [mapLayer, setMapLayer] = useState('street');
+  const [mapTypeId, setMapTypeId] = useState('roadmap');
+  const [infoOpen, setInfoOpen] = useState(false);
+  const { isLoaded: mapsLoaded } = useLoadScript({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY });
   const [activePreset, setActivePreset] = useState('7d');
   const [customStart, setCustomStart] = useState(() => toInputValue(new Date(Date.now() - 7 * 86400000)));
   const [customEnd, setCustomEnd] = useState(() => toInputValue(new Date()));
@@ -404,39 +397,50 @@ export const DataLoggerDetailPage = () => {
               {parseFloat(logger.latitude).toFixed(6)}, {parseFloat(logger.longitude).toFixed(6)}
             </span>
           </div>
-          <div className="relative">
-            <MapContainer
-              center={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}
-              zoom={13}
-              style={{ height: '420px', width: '100%' }}
-              attributionControl={false}
-            >
-              <TileLayer url={
-                mapLayer === 'satellite'
-                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-              } />
-              <Marker position={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}>
-                <Popup>
-                  <strong>{logger.name}</strong>
-                  {logger.serial_number && <><br /><code>{logger.serial_number}</code></>}
-                  {logger.description && <><br />{logger.description}</>}
-                  {latest && (
-                    <>
-                      <br /><br />
-                      <b>Temperature:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
-                      <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
-                      <b>Last seen:</b> {formatRelativeTime(latest.timestamp)}
-                    </>
-                  )}
-                </Popup>
-              </Marker>
-            </MapContainer>
+          <div className="relative" style={{ height: '420px' }}>
+            {!mapsLoaded ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <GoogleMap
+                mapContainerStyle={{ height: '420px', width: '100%' }}
+                center={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
+                zoom={13}
+                mapTypeId={mapTypeId}
+                options={{ disableDefaultUI: true, zoomControl: true }}
+              >
+                <Marker
+                  position={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
+                  onClick={() => setInfoOpen(true)}
+                />
+                {infoOpen && (
+                  <InfoWindow
+                    position={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
+                    onCloseClick={() => setInfoOpen(false)}
+                  >
+                    <div style={{ fontSize: 13 }}>
+                      <strong>{logger.name}</strong>
+                      {logger.serial_number && <><br /><code>{logger.serial_number}</code></>}
+                      {logger.description && <><br />{logger.description}</>}
+                      {latest && (
+                        <>
+                          <br /><br />
+                          <b>Temperature:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
+                          <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
+                          <b>Last seen:</b> {formatRelativeTime(latest.timestamp)}
+                        </>
+                      )}
+                    </div>
+                  </InfoWindow>
+                )}
+              </GoogleMap>
+            )}
             <button
-              onClick={() => setMapLayer((l) => l === 'street' ? 'satellite' : 'street')}
-              className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              onClick={() => setMapTypeId((t) => t === 'roadmap' ? 'satellite' : 'roadmap')}
+              className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              {mapLayer === 'street' ? <><MdSatellite size={15} /> Satellite</> : <><MdMap size={15} /> Street</>}
+              {mapTypeId === 'roadmap' ? <><MdSatellite size={15} /> Satellite</> : <><MdMap size={15} /> Street</>}
             </button>
           </div>
         </div>
