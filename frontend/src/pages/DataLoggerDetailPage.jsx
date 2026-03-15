@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { dataLoggersAPI } from '../services/api';
+import { parseDate, formatRelativeTime } from '../utils/formatters';
 
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -43,20 +44,13 @@ const getPresetRange = (id) => {
   return null;
 };
 
-const timeAgo = (date) => {
-  if (!date) return 'Never';
-  const diff = Date.now() - new Date(date).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  return Math.floor(diff / 86400000) + 'd ago';
-};
+const TZ = 'Africa/Dar_es_Salaam';
 
 const fmt = (ts) =>
-  new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  parseDate(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: TZ });
 
 const fmtShort = (ts) =>
-  new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  parseDate(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: TZ });
 
 // ── chart configs ─────────────────────────────────────────────────────────────
 
@@ -248,7 +242,7 @@ export const DataLoggerDetailPage = () => {
       {latest && (
         <div className="flex items-center gap-3 mb-6 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30 rounded-xl text-sm text-emerald-700 dark:text-emerald-400">
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          Last data received {timeAgo(latest.timestamp)}
+          Last data received {formatRelativeTime(latest.timestamp)}
           {logger?.description && <span className="text-gray-400 dark:text-gray-500 ml-2">· {logger.description}</span>}
         </div>
       )}
@@ -428,7 +422,7 @@ export const DataLoggerDetailPage = () => {
                     <br /><br />
                     <b>Temperature:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
                     <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
-                    <b>Last seen:</b> {timeAgo(latest.timestamp)}
+                    <b>Last seen:</b> {formatRelativeTime(latest.timestamp)}
                   </>
                 )}
               </Popup>
