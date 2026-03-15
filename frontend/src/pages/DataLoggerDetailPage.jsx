@@ -116,7 +116,7 @@ export const DataLoggerDetailPage = () => {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [mapTypeId, setMapTypeId] = useState('roadmap');
+  const [mapTypeId, setMapTypeId] = useState('hybrid');
   const [infoOpen, setInfoOpen] = useState(false);
   const { isLoaded: mapsLoaded } = useLoadScript({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY });
   const [activePreset, setActivePreset] = useState('7d');
@@ -406,7 +406,7 @@ export const DataLoggerDetailPage = () => {
               <GoogleMap
                 mapContainerStyle={{ height: '420px', width: '100%' }}
                 center={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
-                zoom={13}
+                zoom={15}
                 mapTypeId={mapTypeId}
                 options={{ disableDefaultUI: true, zoomControl: true }}
               >
@@ -437,10 +437,10 @@ export const DataLoggerDetailPage = () => {
               </GoogleMap>
             )}
             <button
-              onClick={() => setMapTypeId((t) => t === 'roadmap' ? 'satellite' : 'roadmap')}
+              onClick={() => setMapTypeId((t) => t === 'hybrid' ? 'roadmap' : 'hybrid')}
               className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              {mapTypeId === 'roadmap' ? <><MdSatellite size={15} /> Satellite</> : <><MdMap size={15} /> Street</>}
+              {mapTypeId === 'hybrid' ? <><MdMap size={15} /> Street</> : <><MdSatellite size={15} /> Satellite</>}
             </button>
           </div>
         </div>

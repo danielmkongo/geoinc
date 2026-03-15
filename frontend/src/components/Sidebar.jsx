@@ -19,20 +19,20 @@ const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, 
       ${active
         ? isAdminItem
           ? 'bg-amber-500/20 border border-amber-500/30'
-          : 'bg-green-700/80 shadow-md shadow-green-900/50'
-        : 'hover:bg-white/10'
+          : 'bg-blue-600 shadow-md shadow-blue-600/30'
+        : 'hover:bg-slate-700/60'
       }`}
   >
     <Icon
       size={18}
-      className={active ? (isAdminItem ? 'text-amber-400' : 'text-white') : 'text-white/50 group-hover:text-white'}
+      className={active ? (isAdminItem ? 'text-amber-400' : 'text-white') : 'text-slate-400 group-hover:text-slate-200'}
     />
     <div className="flex-1 min-w-0">
-      <p className={`text-sm font-semibold leading-tight ${active ? (isAdminItem ? 'text-amber-300' : 'text-white') : 'text-white/70 group-hover:text-white'}`}>
+      <p className={`text-sm font-semibold leading-tight ${active ? (isAdminItem ? 'text-amber-300' : 'text-white') : 'text-slate-300 group-hover:text-white'}`}>
         {label}
       </p>
       {desc && (
-        <p className={`text-xs leading-tight mt-0.5 ${active ? (isAdminItem ? 'text-amber-500/70' : 'text-white/60') : 'text-white/35 group-hover:text-white/60'}`}>
+        <p className={`text-xs leading-tight mt-0.5 ${active ? (isAdminItem ? 'text-amber-500/70' : 'text-blue-200') : 'text-slate-500 group-hover:text-slate-400'}`}>
           {desc}
         </p>
       )}
@@ -41,7 +41,7 @@ const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, 
 );
 
 const SectionLabel = ({ children }) => (
-  <p className="text-green-500/70 text-xs font-semibold uppercase tracking-widest px-3 pt-4 pb-1.5">{children}</p>
+  <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest px-3 pt-4 pb-1.5">{children}</p>
 );
 
 export const Sidebar = () => {
@@ -65,8 +65,7 @@ export const Sidebar = () => {
       {/* Mobile toggle */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        style={{ backgroundColor: '#040c04' }}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2.5 rounded-xl text-white shadow-lg hover:bg-green-900 transition-colors"
+        className="fixed top-4 left-4 z-50 lg:hidden p-2.5 rounded-xl bg-slate-800 text-white shadow-lg hover:bg-slate-700 transition-colors"
       >
         {isOpen ? <MdClose size={22} /> : <MdMenu size={22} />}
       </button>
@@ -78,21 +77,21 @@ export const Sidebar = () => {
 
       {/* Sidebar panel */}
       <aside
-        style={{ background: 'linear-gradient(180deg, #030803 0%, #040c04 60%, #060f06 100%)' }}
         className={`fixed left-0 top-0 h-screen w-64 z-40 flex flex-col
-          border-r border-green-900/60 shadow-2xl
+          bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800
+          border-r border-slate-700/50 shadow-2xl
           transform transition-transform duration-300 lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Logo */}
-        <div className="p-5 border-b border-white/10">
+        <div className="p-5 border-b border-slate-700/50">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-white">
               <img src={logo} alt="TGDC" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
               <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
-              <p className="text-white/40 text-xs">TGDC IoT Monitoring Platform</p>
+              <p className="text-slate-400 text-xs">TGDC IoT Monitoring Platform</p>
             </div>
           </div>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border
@@ -129,10 +128,10 @@ export const Sidebar = () => {
         </nav>
 
         {/* Bottom */}
-        <div className="p-4 border-t border-white/10 space-y-2">
+        <div className="p-4 border-t border-slate-700/50 space-y-2">
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all text-sm font-medium"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-sm font-medium"
           >
             <span className="text-base w-5 text-center">{darkMode ? '☀️' : '🌙'}</span>
             {darkMode ? 'Light Mode' : 'Dark Mode'}
@@ -144,7 +143,7 @@ export const Sidebar = () => {
                 {avatarLetter}
               </div>
               {isAdmin && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-green-950 flex items-center justify-center">
+                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-slate-900 flex items-center justify-center">
                   <MdShield size={7} className="text-slate-900" />
                 </div>
               )}
@@ -158,11 +157,11 @@ export const Sidebar = () => {
                   </span>
                 )}
               </div>
-              <p className="text-white/40 text-xs truncate">{user?.email || user?.username}</p>
+              <p className="text-slate-400 text-xs truncate">{user?.email || user?.username}</p>
             </div>
             <button
               onClick={logout}
-              className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
               title="Logout"
             >
               <MdLogout size={18} />

@@ -25,7 +25,7 @@ const LoggerMap = ({ position, onChange }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [mapTypeId, setMapTypeId] = useState('roadmap');
+  const [mapTypeId, setMapTypeId] = useState('hybrid');
   const [latInput, setLatInput] = useState(position?.lat?.toFixed(6) ?? '');
   const [lngInput, setLngInput] = useState(position?.lng?.toFixed(6) ?? '');
   const mapRef = useRef(null);
@@ -147,10 +147,10 @@ const LoggerMap = ({ position, onChange }) => {
         </div>
         <button
           type="button"
-          onClick={() => setMapTypeId((t) => t === 'roadmap' ? 'satellite' : 'roadmap')}
+          onClick={() => setMapTypeId((t) => t === 'hybrid' ? 'roadmap' : 'hybrid')}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors shrink-0"
         >
-          {mapTypeId === 'roadmap' ? <><MdSatellite size={14} /> Satellite</> : <><MdMap size={14} /> Street</>}
+          {mapTypeId === 'hybrid' ? <><MdMap size={14} /> Street</> : <><MdSatellite size={14} /> Satellite</>}
         </button>
       </div>
 
