@@ -72,6 +72,13 @@ const Dashboard = () => {
     loadAlerts();
   }, [deviceId, setAlerts]);
 
+  // Reset all toggle switches when device goes offline
+  useEffect(() => {
+    if (serverLastUpdate && !isWithinMinutes(serverLastUpdate, 20)) {
+      resetActuators();
+    }
+  }, [serverLastUpdate, resetActuators]);
+
   const handleNewBatch = async () => {
     if (!window.confirm('Start a new incubation batch? This will reset the incubation timer to today and notify the device to clear its stored start date.')) return;
     try {
@@ -91,13 +98,6 @@ const Dashboard = () => {
   // Use server-stamped last_update (UTC-safe) — falls back to WS timestamp if server value not yet loaded
   const isOnline = isWithinMinutes(serverLastUpdate, 20) ||
     (lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 20 * 60 * 1000);
-
-  // Reset all toggle switches when device goes offline
-  useEffect(() => {
-    if (serverLastUpdate && !isWithinMinutes(serverLastUpdate, 20)) {
-      resetActuators();
-    }
-  }, [serverLastUpdate, resetActuators]);
 
   const temperature = currentReading?.temperature ?? 0;
   const humidity = currentReading?.humidity ?? 0;
