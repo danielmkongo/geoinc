@@ -64,7 +64,7 @@ export const useWebSocket = () => {
           break;
 
         case 'connected':
-          console.log('✅ WebSocket connected');
+          console.log('WebSocket connected');
           setWSConnected(true);
           break;
 
@@ -74,12 +74,12 @@ export const useWebSocket = () => {
     };
 
     const handleError = (error) => {
-      console.error('❌ WebSocket error:', error);
+      console.error('WebSocket error:', error);
       setConnectionError(error.message);
     };
 
     const handleClose = () => {
-      console.log('🔌 WebSocket closed');
+      console.log('WebSocket closed');
       setWSConnected(false);
     };
 
@@ -92,7 +92,7 @@ export const useWebSocket = () => {
         setWSConnected(true);
       })
       .catch((error) => {
-        console.error('❌ Failed to connect WebSocket:', error);
+        console.error('Failed to connect WebSocket:', error);
         setConnectionError(error.message);
       });
 

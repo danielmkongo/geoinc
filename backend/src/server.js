@@ -87,23 +87,23 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 MQTT Broker: ${process.env.MQTT_BROKER}:${process.env.MQTT_PORT}`);
-  console.log(`🗄️  Database: ${process.env.DB_PATH || './incubator.db'}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`MQTT Broker: ${process.env.MQTT_BROKER}:${process.env.MQTT_PORT}`);
+  console.log(`Database: ${process.env.DB_PATH || './incubator.db'}`);
+  console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
 
   // Connect MQTT
   try {
     await mqttService.connect(wsManager);
-    console.log('✅ MQTT service started');
+    console.log('MQTT service started');
   } catch (error) {
-    console.error('⚠️  MQTT connection failed (will retry automatically):', error.message);
+    console.error('MQTT connection failed (will retry automatically):', error.message);
   }
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n⏹️  Shutting down gracefully...');
+  console.log('\nShutting down gracefully...');
   await mqttService.disconnect();
   process.exit(0);
 });

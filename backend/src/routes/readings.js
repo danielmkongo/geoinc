@@ -36,7 +36,7 @@ router.get('/latest/:deviceId', async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Get latest reading error:', error);
+    console.error('Get latest reading error:', error);
     res.status(500).json({ error: 'Failed to fetch latest reading' });
   }
 });
@@ -68,7 +68,7 @@ router.get('/last-8/:deviceId', async (req, res) => {
       readings
     });
   } catch (error) {
-    console.error('❌ Get last 8 readings error:', error);
+    console.error('Get last 8 readings error:', error);
     res.status(500).json({ error: 'Failed to fetch readings' });
   }
 });
@@ -113,7 +113,7 @@ router.get('/historical/:deviceId', async (req, res) => {
       readings: result.rows
     });
   } catch (error) {
-    console.error('❌ Get historical readings error:', error);
+    console.error('Get historical readings error:', error);
     res.status(500).json({ error: 'Failed to fetch readings' });
   }
 });

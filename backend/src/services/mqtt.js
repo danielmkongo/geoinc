@@ -34,7 +34,7 @@ export class MQTTService {
       this.client = mqtt.connect(brokerUrl, options);
 
       this.client.on('connect', () => {
-        console.log('✅ MQTT Connected');
+        console.log('MQTT Connected');
         this.isConnected = true;
         this.lastPing = new Date();
         
@@ -48,12 +48,12 @@ export class MQTTService {
       });
 
       this.client.on('error', (error) => {
-        console.error('❌ MQTT Error:', error);
+        console.error('MQTT Error:', error);
         this.isConnected = false;
       });
 
       this.client.on('disconnect', () => {
-        console.log('🔌 MQTT Disconnected');
+        console.log('MQTT Disconnected');
         this.isConnected = false;
       });
 
@@ -74,9 +74,9 @@ export class MQTTService {
       `${deviceTopic}/device/request_commands`
     ], (error) => {
       if (error) {
-        console.error('❌ Subscription error:', error);
+        console.error('Subscription error:', error);
       } else {
-        console.log('✅ Subscribed to device topics');
+        console.log('Subscribed to device topics');
       }
     });
   }
@@ -110,7 +110,7 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Message handling error:', error);
+      console.error('Message handling error:', error);
     }
   }
 
@@ -152,7 +152,7 @@ export class MQTTService {
         }
       }
 
-      console.log('✅ Sensor data stored:', { temperature, humidity, water_temperature });
+      console.log('Sensor data stored:', { temperature, humidity, water_temperature });
 
       // Broadcast to WebSocket clients
       if (this.wsManager) {
@@ -165,7 +165,7 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Sensor data handling error:', error);
+      console.error('Sensor data handling error:', error);
     }
   }
 
@@ -190,7 +190,7 @@ export class MQTTService {
          )`
       );
 
-      console.log('✅ Device status updated');
+      console.log('Device status updated');
 
       // Broadcast to WebSocket clients
       if (this.wsManager) {
@@ -202,7 +202,7 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Device status handling error:', error);
+      console.error('Device status handling error:', error);
     }
   }
 
@@ -221,7 +221,7 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Alert handling error:', error);
+      console.error('Alert handling error:', error);
     }
   }
 
@@ -235,9 +235,9 @@ export class MQTTService {
         [`alert_${Date.now()}`, deviceId, type, value, threshold, severity]
       );
 
-      console.log(`⚠️  Alert created: ${type} (value: ${value}, threshold: ${threshold})`);
+      console.log(`Alert created: ${type} (value: ${value}, threshold: ${threshold})`);
     } catch (error) {
-      console.error('❌ Alert creation error:', error);
+      console.error('Alert creation error:', error);
     }
   }
 
@@ -293,7 +293,7 @@ export class MQTTService {
       );
 
       if (!hasCommand && !shouldSendFirmware) {
-        console.log('ℹ️  Device requested commands but nothing to send');
+        console.log('Device requested commands but nothing to send');
         return;
       }
 
@@ -308,19 +308,19 @@ export class MQTTService {
           download_url: fw.download_url,
           file_size: fw.file_size
         };
-        console.log(`ℹ️  Sending OTA ${fw.version} (device has ${deviceVersion ?? 'unknown'})`);
+        console.log(`Sending OTA ${fw.version} (device has ${deviceVersion ?? 'unknown'})`);
       }
 
       const commandTopic = `${process.env.DEVICE_TOPIC_PREFIX}/actuator/commands`;
       this.client.publish(commandTopic, JSON.stringify(payload), { qos: 1 }, (error) => {
         if (error) {
-          console.error('❌ Failed to re-publish pending command:', error);
+          console.error('Failed to re-publish pending command:', error);
         } else {
-          console.log('✅ Re-published pending command to offline device:', payload);
+          console.log('Re-published pending command to offline device:', payload);
         }
       });
     } catch (error) {
-      console.error('❌ handleCommandRequest error:', error);
+      console.error('handleCommandRequest error:', error);
     }
   }
 
@@ -337,7 +337,7 @@ export class MQTTService {
       this.client.publish(topic, payload, { qos: 1 }, (error) => {
         if (error) reject(error);
         else {
-          console.log('✅ Incubation reset published to device, start_ts:', startTimestamp);
+          console.log('Incubation reset published to device, start_ts:', startTimestamp);
           resolve();
         }
       });
@@ -355,10 +355,10 @@ export class MQTTService {
     return new Promise((resolve, reject) => {
       this.client.publish(topic, payload, { qos: 1 }, (error) => {
         if (error) {
-          console.error('❌ Publish error:', error);
+          console.error('Publish error:', error);
           reject(error);
         } else {
-          console.log('✅ Command published:', command);
+          console.log('Command published:', command);
           resolve();
         }
       });
@@ -369,7 +369,7 @@ export class MQTTService {
     return new Promise((resolve) => {
       if (this.client) {
         this.client.end(false, () => {
-          console.log('🔌 MQTT Disconnected');
+          console.log('MQTT Disconnected');
           this.isConnected = false;
           resolve();
         });

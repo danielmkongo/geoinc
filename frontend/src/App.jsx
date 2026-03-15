@@ -6,7 +6,7 @@ import {
   Navigate,
 } from 'react-router-dom';
 
-console.log('📦 App.jsx loading...');
+console.log('App.jsx loading...');
 
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -22,15 +22,15 @@ import { AdminPage } from './pages/AdminPage';
 import { DataLoggersPage } from './pages/DataLoggersPage';
 import { DataLoggerDetailPage } from './pages/DataLoggerDetailPage';
 
-console.log('✅ All imports loaded');
+console.log('All imports loaded');
 
 const ProtectedRoute = ({ children }) => {
-  console.log('🔐 ProtectedRoute checking auth...');
+  console.log('ProtectedRoute checking auth...');
   const { isAuthenticated } = useAuth();
-  console.log('✅ ProtectedRoute auth check:', { isAuthenticated });
+  console.log('ProtectedRoute auth check:', { isAuthenticated });
 
   if (!isAuthenticated) {
-    console.log('↩️ Not authenticated, redirecting to /login');
+    console.log('Not authenticated, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
@@ -52,17 +52,17 @@ const AdminRoute = ({ children }) => {
 };
 
 const AppContent = () => {
-  console.log('🔄 AppContent: Initializing');
+  console.log('AppContent: Initializing');
 
   try {
     // Initialize theme
     useTheme();
-    console.log('✅ Theme initialized');
+    console.log('Theme initialized');
   } catch (err) {
-    console.error('❌ Theme init error:', err);
+    console.error('Theme init error:', err);
   }
 
-  console.log('🎯 AppContent: Rendering Router');
+  console.log('AppContent: Rendering Router');
 
   return (
     <Router>
@@ -139,7 +139,7 @@ const AppContent = () => {
 };
 
 function App() {
-  console.log('🎯 App: Rendering');
+  console.log('App: Rendering');
   return (
     <AppContent />
   );

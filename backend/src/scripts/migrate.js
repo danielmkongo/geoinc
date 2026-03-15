@@ -13,10 +13,10 @@ const db = new Database(dbPath);
 function addColumnIfNotExists(table, column, definition) {
   try {
     db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
-    console.log(`✅ Added ${table}.${column}`);
+    console.log(`Added ${table}.${column}`);
   } catch (e) {
     if (e.message.includes('duplicate column')) {
-      console.log(`⏭️  ${table}.${column} already exists`);
+      console.log(`${table}.${column} already exists`);
     } else {
       throw e;
     }
@@ -43,5 +43,5 @@ db.prepare(`
   )
 `).run();
 
-console.log('✅ Migration complete');
+console.log('Migration complete');
 db.close();

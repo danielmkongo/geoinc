@@ -14,13 +14,13 @@ const dbPath = process.env.DB_PATH || path.join(__dirname, '../../incubator.db')
 
 async function setupDatabase() {
   try {
-    console.log('🗄️  Setting up SQLite database...');
-    console.log(`📍 Database path: ${dbPath}`);
+    console.log('Setting up SQLite database...');
+    console.log(`Database path: ${dbPath}`);
     
     const db = new Database(dbPath);
     db.pragma('foreign_keys = ON');
     
-    console.log('✅ Database connected');
+    console.log('Database connected');
     
     // Run schema
     const statements = schema.split(';').filter(s => s.trim());
@@ -29,12 +29,12 @@ async function setupDatabase() {
         db.exec(statement);
       }
     }
-    console.log('✅ Schema created successfully');
+    console.log('Schema created successfully');
 
     // Migrations for existing databases
     try {
       db.exec('ALTER TABLE readings ADD COLUMN soil_temperature REAL');
-      console.log('✅ Migration: added soil_temperature column');
+      console.log('Migration: added soil_temperature column');
     } catch (_) {}
 
     // Rename old actuator columns in readings
@@ -50,7 +50,7 @@ async function setupDatabase() {
     try { db.exec('ALTER TABLE actuator_states ADD COLUMN exhaust_fan INTEGER DEFAULT 0'); } catch (_) {}
     try { db.exec('ALTER TABLE actuator_states ADD COLUMN inlet_fan INTEGER DEFAULT 0'); } catch (_) {}
     try { db.exec('ALTER TABLE actuator_states ADD COLUMN radiator_fan INTEGER DEFAULT 0'); } catch (_) {}
-    console.log('✅ Migration: actuator columns updated');
+    console.log('Migration: actuator columns updated');
 
     try {
       db.exec(`CREATE TABLE IF NOT EXISTS firmware_updates (
@@ -61,7 +61,7 @@ async function setupDatabase() {
         is_active INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
-      console.log('✅ Migration: firmware_updates table ready');
+      console.log('Migration: firmware_updates table ready');
     } catch (_) {
       // Table already exists — safe to ignore
     }
@@ -69,7 +69,7 @@ async function setupDatabase() {
     // Incubation start date column
     try {
       db.exec('ALTER TABLE devices ADD COLUMN incubation_start DATETIME');
-      console.log('✅ Migration: devices.incubation_start added');
+      console.log('Migration: devices.incubation_start added');
     } catch (_) {}
 
     // Data loggers tables
@@ -102,7 +102,7 @@ async function setupDatabase() {
         rainfall REAL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
-      console.log('✅ Migration: data_loggers and weather_readings tables ready');
+      console.log('Migration: data_loggers and weather_readings tables ready');
     } catch (_) {}
 
     // Insert default device
@@ -112,7 +112,7 @@ async function setupDatabase() {
       db.prepare(
         'INSERT INTO devices (name, mqtt_topic_prefix, description) VALUES (?, ?, ?)'
       ).run('Incubator Device 1', 'incubator/device1', 'Primary incubator unit');
-      console.log('✅ Default device created');
+      console.log('Default device created');
     }
     
     // Create default user
@@ -123,15 +123,15 @@ async function setupDatabase() {
       db.prepare(
         'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)'
       ).run('admin', hashedPassword, 'admin');
-      console.log('✅ Default admin user created (username: admin, password: admin123)');
-      console.log('⚠️  IMPORTANT: Change this password in production!');
+      console.log('Default admin user created (username: admin, password: admin123)');
+      console.log('IMPORTANT: Change this password in production!');
     }
     
     db.close();
-    console.log('🎉 Database setup complete!');
+    console.log('Database setup complete!');
     
   } catch (error) {
-    console.error('❌ Database setup failed:', error);
+    console.error('Database setup failed:', error);
     process.exit(1);
   }
 }

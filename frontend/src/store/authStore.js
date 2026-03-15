@@ -1,18 +1,18 @@
 import { create } from 'zustand';
 import { storageService } from '../services/storage';
 
-console.log('📦 authStore.js loading...');
+console.log('authStore.js loading...');
 
 const initialToken = storageService.getToken();
 const initialUser = storageService.getUser();
-console.log('📋 authStore initial state:', { 
+console.log('authStore initial state:', {
   token: !!initialToken, 
   user: initialUser?.username,
   isAuthenticated: !!initialToken 
 });
 
 export const useAuthStore = create((set) => {
-  console.log('🏗️ Creating auth store');
+  console.log('Creating auth store');
   
   return {
     user: initialUser,

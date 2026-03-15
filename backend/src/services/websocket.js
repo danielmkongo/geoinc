@@ -6,7 +6,7 @@ export class WebSocketManager {
 
   handleConnection(ws, req) {
     const clientId = `client_${Date.now()}`;
-    console.log(`✅ WebSocket client connected: ${clientId}`);
+    console.log(`WebSocket client connected: ${clientId}`);
     
     this.clients.add(ws);
 
@@ -22,17 +22,17 @@ export class WebSocketManager {
         const message = JSON.parse(data);
         this.handleClientMessage(ws, message);
       } catch (error) {
-        console.error('❌ WebSocket message error:', error);
+        console.error('WebSocket message error:', error);
       }
     });
 
     ws.on('close', () => {
-      console.log(`🔌 WebSocket client disconnected: ${clientId}`);
+      console.log(`WebSocket client disconnected: ${clientId}`);
       this.clients.delete(ws);
     });
 
     ws.on('error', (error) => {
-      console.error('❌ WebSocket error:', error);
+      console.error('WebSocket error:', error);
     });
   }
 
@@ -42,7 +42,7 @@ export class WebSocketManager {
     switch (event) {
       case 'subscribe':
         ws.subscribed = true;
-        console.log('📢 Client subscribed to updates');
+        console.log('Client subscribed to updates');
         break;
       case 'unsubscribe':
         ws.subscribed = false;
@@ -51,7 +51,7 @@ export class WebSocketManager {
         ws.send(JSON.stringify({ type: 'pong', timestamp: new Date() }));
         break;
       default:
-        console.log('ℹ️  Unknown event:', event);
+        console.log('Unknown event:', event);
     }
   }
 

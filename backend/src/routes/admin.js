@@ -35,7 +35,7 @@ router.get('/users', async (req, res) => {
     );
     res.json({ users: result.rows });
   } catch (error) {
-    console.error('❌ List users error:', error);
+    console.error('List users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -66,7 +66,7 @@ router.post('/users', async (req, res) => {
     );
     res.status(201).json({ user: user.rows[0] });
   } catch (error) {
-    console.error('❌ Create user error:', error);
+    console.error('Create user error:', error);
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -106,7 +106,7 @@ router.put('/users/:id', async (req, res) => {
     if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json({ user: user.rows[0] });
   } catch (error) {
-    console.error('❌ Update user error:', error);
+    console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -121,7 +121,7 @@ router.delete('/users/:id', async (req, res) => {
     await db.query('DELETE FROM users WHERE id = ?', [id]);
     res.json({ message: 'User deleted' });
   } catch (error) {
-    console.error('❌ Delete user error:', error);
+    console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
@@ -138,7 +138,7 @@ router.post('/users/:id/reset-password', async (req, res) => {
     await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, id]);
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    console.error('❌ Reset password error:', error);
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -178,7 +178,7 @@ router.post('/devices', async (req, res) => {
     const device = await db.query('SELECT * FROM devices WHERE id = ?', [deviceId]);
     res.status(201).json({ device: device.rows[0] });
   } catch (error) {
-    console.error('❌ Create device error:', error);
+    console.error('Create device error:', error);
     res.status(500).json({ error: 'Failed to create device' });
   }
 });
@@ -205,7 +205,7 @@ router.put('/devices/:id', async (req, res) => {
     if (device.rows.length === 0) return res.status(404).json({ error: 'Device not found' });
     res.json({ device: device.rows[0] });
   } catch (error) {
-    console.error('❌ Update device error:', error);
+    console.error('Update device error:', error);
     res.status(500).json({ error: 'Failed to update device' });
   }
 });
@@ -217,7 +217,7 @@ router.delete('/devices/:id', async (req, res) => {
     await db.query('DELETE FROM devices WHERE id = ?', [id]);
     res.json({ message: 'Device deleted' });
   } catch (error) {
-    console.error('❌ Delete device error:', error);
+    console.error('Delete device error:', error);
     res.status(500).json({ error: 'Failed to delete device' });
   }
 });
@@ -232,7 +232,7 @@ router.get('/firmware', async (req, res) => {
     );
     res.json({ firmware: result.rows });
   } catch (error) {
-    console.error('❌ List firmware error:', error);
+    console.error('List firmware error:', error);
     res.status(500).json({ error: 'Failed to fetch firmware list' });
   }
 });
@@ -262,7 +262,7 @@ router.post('/firmware', uploadFirmware.single('file'), async (req, res) => {
     );
     res.status(201).json({ firmware: entry.rows[0] });
   } catch (error) {
-    console.error('❌ Create firmware error:', error);
+    console.error('Create firmware error:', error);
     res.status(500).json({ error: 'Failed to create firmware entry' });
   }
 });
@@ -274,7 +274,7 @@ router.delete('/firmware/:id', async (req, res) => {
     await db.query('DELETE FROM firmware_updates WHERE id = ?', [id]);
     res.json({ message: 'Firmware entry deleted' });
   } catch (error) {
-    console.error('❌ Delete firmware error:', error);
+    console.error('Delete firmware error:', error);
     res.status(500).json({ error: 'Failed to delete firmware entry' });
   }
 });
@@ -286,7 +286,7 @@ router.post('/firmware/:id/deactivate', async (req, res) => {
     await db.query('UPDATE firmware_updates SET is_active = 0 WHERE id = ?', [id]);
     res.json({ message: 'Firmware update deactivated' });
   } catch (error) {
-    console.error('❌ Deactivate firmware error:', error);
+    console.error('Deactivate firmware error:', error);
     res.status(500).json({ error: 'Failed to deactivate firmware entry' });
   }
 });
@@ -299,7 +299,7 @@ router.get('/data-loggers', async (req, res) => {
     const result = await db.query('SELECT * FROM data_loggers ORDER BY created_at DESC');
     res.json({ loggers: result.rows });
   } catch (error) {
-    console.error('❌ List data loggers error:', error);
+    console.error('List data loggers error:', error);
     res.status(500).json({ error: 'Failed to fetch data loggers' });
   }
 });
@@ -321,7 +321,7 @@ router.post('/data-loggers', async (req, res) => {
     );
     res.status(201).json({ logger: logger.rows[0] });
   } catch (error) {
-    console.error('❌ Create data logger error:', error);
+    console.error('Create data logger error:', error);
     if (error.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Serial number already registered' });
     res.status(500).json({ error: 'Failed to create data logger' });
   }
@@ -345,7 +345,7 @@ router.put('/data-loggers/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Logger not found' });
     res.json({ logger: result.rows[0] });
   } catch (error) {
-    console.error('❌ Update data logger error:', error);
+    console.error('Update data logger error:', error);
     res.status(500).json({ error: 'Failed to update data logger' });
   }
 });
@@ -356,7 +356,7 @@ router.delete('/data-loggers/:id', async (req, res) => {
     await db.query('DELETE FROM data_loggers WHERE id = ?', [req.params.id]);
     res.json({ message: 'Data logger deleted' });
   } catch (error) {
-    console.error('❌ Delete data logger error:', error);
+    console.error('Delete data logger error:', error);
     res.status(500).json({ error: 'Failed to delete data logger' });
   }
 });

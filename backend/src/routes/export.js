@@ -41,7 +41,7 @@ router.get('/csv/:deviceId', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);
   } catch (error) {
-    console.error('❌ CSV export error:', error);
+    console.error('CSV export error:', error);
     res.status(500).json({ error: 'Failed to export CSV' });
   }
 });
@@ -75,7 +75,7 @@ router.get('/json/:deviceId', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.json({ readings: result.rows });
   } catch (error) {
-    console.error('❌ JSON export error:', error);
+    console.error('JSON export error:', error);
     res.status(500).json({ error: 'Failed to export JSON' });
   }
 });

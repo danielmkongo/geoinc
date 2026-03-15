@@ -16,7 +16,7 @@ export class HealthService {
         mqtt_broker: mqttHealth
       };
     } catch (error) {
-      console.error('❌ Health check error:', error);
+      console.error('Health check error:', error);
       return {
         status: 'unhealthy',
         timestamp: new Date(),

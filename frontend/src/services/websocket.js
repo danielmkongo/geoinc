@@ -18,7 +18,7 @@ export class WebSocketClient {
         this.ws = new WebSocket(url);
 
         this.ws.onopen = () => {
-          console.log('✅ WebSocket connected');
+          console.log('WebSocket connected');
           this.reconnectAttempts = 0;
           resolve();
         };
@@ -28,17 +28,17 @@ export class WebSocketClient {
             const message = JSON.parse(event.data);
             this.onMessage(message);
           } catch (error) {
-            console.error('❌ WebSocket message parsing error:', error);
+            console.error('WebSocket message parsing error:', error);
           }
         };
 
         this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
+          console.error('WebSocket error:', error);
           if (this.onError) this.onError(error);
         };
 
         this.ws.onclose = () => {
-          console.log('🔌 WebSocket closed');
+          console.log('WebSocket closed');
           if (this.onClose) this.onClose();
           this.attemptReconnect(token);
         };
@@ -58,11 +58,11 @@ export class WebSocketClient {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * this.reconnectAttempts;
-      console.log(`🔄 Attempting to reconnect in ${delay}ms...`);
+      console.log(`Attempting to reconnect in ${delay}ms...`);
       
       setTimeout(() => {
         this.connect(token).catch((error) => {
-          console.error('❌ Reconnection failed:', error);
+          console.error('Reconnection failed:', error);
         });
       }, delay);
     }
@@ -72,7 +72,7 @@ export class WebSocketClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ event, data, timestamp: Date.now() }));
     } else {
-      console.warn('⚠️  WebSocket is not connected');
+      console.warn('WebSocket is not connected');
     }
   }
 

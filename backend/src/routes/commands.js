@@ -62,7 +62,7 @@ router.post('/send/:deviceId', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Send command error:', error);
+    console.error('Send command error:', error);
     res.status(500).json({ error: 'Failed to send command' });
   }
 });
@@ -84,7 +84,7 @@ router.get('/history/:deviceId', async (req, res) => {
 
     res.json({ commands: result.rows });
   } catch (error) {
-    console.error('❌ Get command history error:', error);
+    console.error('Get command history error:', error);
     res.status(500).json({ error: 'Failed to fetch command history' });
   }
 });

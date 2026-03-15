@@ -51,7 +51,7 @@ export const useDeviceData = (deviceId) => {
 
         setError(null);
       } catch (err) {
-        console.error('❌ Error fetching device data:', err);
+        console.error('Error fetching device data:', err);
         setError(err.message);
       } finally {
         setLoading(false);

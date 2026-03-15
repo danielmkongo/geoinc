@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
 
     res.json({ devices: result.rows });
   } catch (error) {
-    console.error('❌ Get devices error:', error);
+    console.error('Get devices error:', error);
     res.status(500).json({ error: 'Failed to fetch devices' });
   }
 });
@@ -37,7 +37,7 @@ router.get('/:deviceId', async (req, res) => {
 
     res.json({ device: result.rows[0] });
   } catch (error) {
-    console.error('❌ Get device error:', error);
+    console.error('Get device error:', error);
     res.status(500).json({ error: 'Failed to fetch device' });
   }
 });
@@ -67,7 +67,7 @@ router.get('/:deviceId/status', async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Get device status error:', error);
+    console.error('Get device status error:', error);
     res.status(500).json({ error: 'Failed to fetch device status' });
   }
 });
@@ -98,12 +98,12 @@ router.put('/:deviceId/incubation-start', async (req, res) => {
       const { mqttService } = await import('../server.js');
       await mqttService.publishIncubationReset(startTs);
     } catch (mqttError) {
-      console.error('⚠️  MQTT incubation reset failed (non-fatal):', mqttError.message);
+      console.error('MQTT incubation reset failed (non-fatal):', mqttError.message);
     }
 
     res.json({ incubation_start: incubationStart });
   } catch (error) {
-    console.error('❌ Reset incubation start error:', error);
+    console.error('Reset incubation start error:', error);
     res.status(500).json({ error: 'Failed to reset incubation start' });
   }
 });

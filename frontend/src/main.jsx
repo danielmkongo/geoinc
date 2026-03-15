@@ -4,11 +4,11 @@ import App from './App';
 import './styles/globals.css';
 import 'leaflet/dist/leaflet.css';
 
-console.log('🎬 main.jsx: Starting app...');
+console.log('main.jsx: Starting app...');
 
 try {
   const root = document.getElementById('root');
-  console.log('📍 Found root element:', root);
+  console.log('Found root element:', root);
   
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
@@ -16,7 +16,7 @@ try {
     </React.StrictMode>,
   );
   
-  console.log('✅ App rendered successfully');
+  console.log('App rendered successfully');
 } catch (error) {
-  console.error('❌ Error rendering app:', error);
+  console.error('Error rendering app:', error);
 }
