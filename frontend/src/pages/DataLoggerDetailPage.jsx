@@ -46,16 +46,16 @@ const fmtShort = (ts) =>
 // ── chart configs ─────────────────────────────────────────────────────────────
 
 const CHARTS = [
-  { key: 'temperature',         label: 'Temperature (°C)',        color: '#f97316', unit: '°C' },
-  { key: 'humidity',            label: 'Humidity (%)',             color: '#3b82f6', unit: '%' },
-  { key: 'atmospheric_pressure',label: 'Pressure (hPa)',           color: '#8b5cf6', unit: ' hPa' },
-  { key: 'wind_speed',          label: 'Wind Speed (m/s)',         color: '#06b6d4', unit: ' m/s' },
-  { key: 'wind_gust',           label: 'Wind Gust (m/s)',          color: '#0ea5e9', unit: ' m/s' },
-  { key: 'dew_point',           label: 'Dew Point (°C)',           color: '#10b981', unit: '°C' },
-  { key: 'light_intensity',     label: 'Light Intensity (lux)',    color: '#eab308', unit: ' lux' },
-  { key: 'water_temp',          label: 'Water Temp (°C)',          color: '#14b8a6', unit: '°C' },
-  { key: 'rainfall',            label: 'Rainfall (mm)',            color: '#6366f1', unit: ' mm' },
-  { key: 'battery_voltage',     label: 'Battery Voltage (V)',      color: '#84cc16', unit: ' V' },
+  { key: 'temperature',         label: 'Temperature',      chartLabel: 'Temperature (°C)',        color: '#f97316', textColor: 'text-orange-500',  unit: '°C' },
+  { key: 'humidity',            label: 'Humidity',         chartLabel: 'Humidity (%)',             color: '#3b82f6', textColor: 'text-blue-500',    unit: '%' },
+  { key: 'atmospheric_pressure',label: 'Pressure',         chartLabel: 'Pressure (hPa)',           color: '#8b5cf6', textColor: 'text-purple-500',  unit: ' hPa' },
+  { key: 'wind_speed',          label: 'Wind Speed',       chartLabel: 'Wind Speed (m/s)',         color: '#06b6d4', textColor: 'text-cyan-500',    unit: ' m/s' },
+  { key: 'wind_gust',           label: 'Wind Gust',        chartLabel: 'Wind Gust (m/s)',          color: '#0ea5e9', textColor: 'text-sky-500',     unit: ' m/s' },
+  { key: 'dew_point',           label: 'Dew Point',        chartLabel: 'Dew Point (°C)',           color: '#10b981', textColor: 'text-emerald-500', unit: '°C' },
+  { key: 'light_intensity',     label: 'Light',            chartLabel: 'Light Intensity (lux)',    color: '#eab308', textColor: 'text-yellow-500',  unit: ' lux' },
+  { key: 'water_temp',          label: 'Water Temp',       chartLabel: 'Water Temp (°C)',          color: '#14b8a6', textColor: 'text-teal-500',    unit: '°C' },
+  { key: 'rainfall',            label: 'Rainfall',         chartLabel: 'Rainfall (mm)',            color: '#6366f1', textColor: 'text-indigo-500',  unit: ' mm' },
+  { key: 'battery_voltage',     label: 'Battery',          chartLabel: 'Battery Voltage (V)',      color: '#84cc16', textColor: 'text-lime-500',    unit: ' V' },
 ];
 
 const TABLE_COLS = [
@@ -84,12 +84,12 @@ const StatCard = ({ label, value, unit, color }) => (
   </div>
 );
 
-const MiniChart = ({ data, dataKey, label, color, unit }) => {
+const MiniChart = ({ data, dataKey, label, chartLabel, color, unit }) => {
   const points = [...data].reverse().slice(-60);
   if (!points.some((r) => r[dataKey] !== null)) return null;
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
-      <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-4">{label}</h3>
+      <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-4">{chartLabel}</h3>
       <ResponsiveContainer width="100%" height={160}>
         <LineChart data={points} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
@@ -313,11 +313,9 @@ export const DataLoggerDetailPage = () => {
           {/* Latest stats */}
           {latest && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-              <StatCard label="Temperature" value={latest.temperature} unit="°C" color="text-orange-500" />
-              <StatCard label="Humidity" value={latest.humidity} unit="%" color="text-blue-500" />
-              <StatCard label="Pressure" value={latest.atmospheric_pressure} unit=" hPa" color="text-purple-500" />
-              <StatCard label="Wind Speed" value={latest.wind_speed} unit=" m/s" color="text-cyan-500" />
-              <StatCard label="Rainfall" value={latest.rainfall} unit=" mm" color="text-indigo-500" />
+              {CHARTS.map(({ key, label, textColor, unit }) => (
+                <StatCard key={key} label={label} value={latest[key]} unit={unit} color={textColor} />
+              ))}
             </div>
           )}
 
@@ -333,8 +331,8 @@ export const DataLoggerDetailPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {CHARTS.map(({ key, label, color, unit }) => (
-                <MiniChart key={key} data={readings} dataKey={key} label={label} color={color} unit={unit} />
+              {CHARTS.map(({ key, chartLabel, color, unit }) => (
+                <MiniChart key={key} data={readings} dataKey={key} chartLabel={chartLabel} color={color} unit={unit} />
               ))}
             </div>
           )}

@@ -7,9 +7,7 @@ import {
 } from 'react-icons/md';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { useDeviceStore } from '../store/deviceStore';
 
-const LIVE_THRESHOLD_MS = 20 * 60 * 1000;
 
 const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, onClick }) => (
   <Link
@@ -49,9 +47,6 @@ export const Sidebar = () => {
   const { darkMode, toggleTheme } = useTheme();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const lastUpdate = useDeviceStore((state) => state.lastUpdate);
-  const isLive = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < LIVE_THRESHOLD_MS;
-
   const isAdmin = user?.role === 'admin';
   const close = () => setIsOpen(false);
   const isActive = (path) =>
@@ -90,14 +85,9 @@ export const Sidebar = () => {
               <img src={logo} alt="TGDC" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
-              <p className="text-slate-400 text-xs">TGDC IoT Monitoring Platform</p>
+              <h1 className="text-white font-bold text-base leading-tight">TGDC</h1>
+              <p className="text-slate-400 text-xs">IoT Monitoring Platform</p>
             </div>
-          </div>
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border
-            ${isLive ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-red-500/10 border-red-500/25 text-red-400'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-            <span>{isLive ? 'Incubator · Live' : 'Incubator · Offline'}</span>
           </div>
         </div>
 

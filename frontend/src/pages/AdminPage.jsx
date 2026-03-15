@@ -45,8 +45,7 @@ const LoggerMap = ({ position, onChange }) => {
     mapRef.current?.setZoom(14);
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const handleSearch = async () => {
     if (!query.trim()) return;
     setSearching(true);
     setResults([]);
@@ -84,16 +83,18 @@ const LoggerMap = ({ position, onChange }) => {
   return (
     <div className="flex flex-col gap-2">
       {/* Search bar */}
-      <form onSubmit={handleSearch} className="flex gap-2 relative">
+      <div className="flex gap-2 relative">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder="Search location…"
           className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500 placeholder-gray-400 dark:placeholder-slate-500"
         />
         <button
-          type="submit"
+          type="button"
+          onClick={handleSearch}
           disabled={searching}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
         >
@@ -115,7 +116,7 @@ const LoggerMap = ({ position, onChange }) => {
             ))}
           </div>
         )}
-      </form>
+      </div>
 
       {/* Editable coordinate inputs + satellite toggle */}
       <div className="flex items-center gap-2">
