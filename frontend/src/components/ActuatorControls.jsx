@@ -134,7 +134,19 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
             type="checkbox"
             className="sr-only peer"
             checked={overrideEnabled}
-            onChange={(e) => setOverrideEnabled(e.target.checked)}
+            onChange={async (e) => {
+              const enabling = e.target.checked;
+              setOverrideEnabled(enabling);
+              if (!enabling) {
+                try {
+                  await commandsAPI.disableOverride(deviceId);
+                  setFeedback({ type: 'success', msg: 'Returned to automatic control' });
+                  setTimeout(() => setFeedback(null), 3000);
+                } catch {
+                  setFeedback({ type: 'error', msg: 'Failed to disable override' });
+                }
+              }
+            }}
           />
           <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-400 transition-colors duration-200
             ${overrideEnabled ? 'bg-amber-500' : 'bg-gray-200 dark:bg-slate-600'}

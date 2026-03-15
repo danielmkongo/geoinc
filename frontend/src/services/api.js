@@ -52,6 +52,8 @@ export const readingsAPI = {
 export const commandsAPI = {
   send: (deviceId, command) =>
     apiClient.post(`/commands/send/${deviceId}`, command),
+  disableOverride: (deviceId) =>
+    apiClient.post(`/commands/override-off/${deviceId}`),
   getHistory: (deviceId, limit = 50) =>
     apiClient.get(`/commands/history/${deviceId}?limit=${limit}`),
 };

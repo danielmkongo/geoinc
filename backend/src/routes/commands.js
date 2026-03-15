@@ -67,6 +67,35 @@ router.post('/send/:deviceId', async (req, res) => {
   }
 });
 
+// Disable manual override — device returns to automatic control immediately
+router.post('/override-off/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const commandId = `cmd_${Date.now()}`;
+
+    await db.query(
+      `INSERT INTO command_logs (id, device_id, command_type, command_payload, status, sent_at)
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [commandId, deviceId, 'override_off', JSON.stringify({ override: false }), 'pending']
+    );
+
+    try {
+      const { mqttService } = await import('../server.js');
+      await mqttService.publishCommand(deviceId, { override: false });
+      res.json({ status: 'sent', commandId });
+    } catch (mqttError) {
+      await db.query(
+        'UPDATE command_logs SET status = ?, error_message = ?, acknowledged_at = CURRENT_TIMESTAMP WHERE id = ?',
+        ['failed', mqttError.message, commandId]
+      );
+      res.status(500).json({ error: 'Failed to publish override-off command' });
+    }
+  } catch (error) {
+    console.error('Override-off error:', error);
+    res.status(500).json({ error: 'Failed to send override-off command' });
+  }
+});
+
 // Get command history
 router.get('/history/:deviceId', async (req, res) => {
   try {

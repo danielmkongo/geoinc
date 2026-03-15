@@ -222,7 +222,7 @@ const Dashboard = () => {
           iconBg={isOnline ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-emerald-400/40' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40'}
           trend={isOnline ? 'Connected' : 'Disconnected'}
           trendClass={isOnline ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}
-          subtitle={isOnline && serverLastUpdate ? 'Updated ' + formatRelativeTime(serverLastUpdate) : 'No recent data'}
+          subtitle={serverLastUpdate ? 'Last seen: ' + formatRelativeTime(serverLastUpdate) : 'No data received'}
         />
         <StatCard
           title="Firmware"

@@ -229,11 +229,11 @@ Optional — publish after executing a command as explicit acknowledgement. The 
 ## Topic: Platform → Device (Subscribe)
 
 ### `incubator/device1/actuator/commands`
-The platform publishes commands here when a user toggles an actuator on the dashboard.
+The platform publishes commands here when a user toggles an actuator on the dashboard, or when the user disables Manual Override to return the device to automatic control.
 
 **QoS:** 1 (guaranteed delivery)
 
-**Payload:**
+#### Actuator command payload
 ```json
 {
   "pump": true,
@@ -254,7 +254,25 @@ The platform publishes commands here when a user toggles an actuator on the dash
 
 > The payload always contains **all five actuator states**, not just the changed one. Apply all values on receipt.
 
+#### Override-off payload
+When the user turns off Manual Override on the dashboard, the platform sends:
+```json
+{
+  "override": false
+}
+```
+
+| Field      | Type    | Description                                              |
+|------------|---------|----------------------------------------------------------|
+| `override` | boolean | `false` = immediately clear override mode and return to automatic control |
+
 **Device must:**
+- Check for `override: false` **before** checking for actuator keys
+- Clear `overrideMode` immediately when received
+- Resume the automatic PID/humidity control loop on the next sensor cycle
+- No `device/status` reply is required for override-off commands
+
+**Device must (for actuator commands):**
 1. Receive the command
 2. Apply the requested states to the hardware
 3. Publish current states to `incubator/device1/device/status` to confirm execution
@@ -278,10 +296,20 @@ Commands remain `pending` until the device publishes `device/status`. If the dev
 Platform                          Device
    |                                 |
    |-- actuator/commands ----------->|  (pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan)
-   |                                 |  [device applies the command]
+   |                                 |  [device applies the command, sets overrideMode = true]
    |<-- device/status ---------------|  (pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan)
    |                                 |
    [UI toggle updates]
+```
+
+**Override-off flow:**
+```
+Platform                          Device
+   |                                 |
+   [User turns off Manual Override]  |
+   |-- actuator/commands ----------->|  { "override": false }
+   |                                 |  [device clears overrideMode immediately]
+   |                                 |  [automatic control resumes next sensor cycle]
 ```
 
 If the device does not publish `device/status` within 5 seconds, the platform times out and shows an error.
