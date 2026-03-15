@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   MdArrowBack, MdRefresh, MdDownload, MdCalendarToday, MdFilterList,
-  MdLocationOn, MdSensors, MdTableChart, MdBarChart,
+  MdLocationOn, MdSensors, MdTableChart, MdBarChart, MdSatellite, MdMap,
 } from 'react-icons/md';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -125,6 +125,7 @@ export const DataLoggerDetailPage = () => {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [mapLayer, setMapLayer] = useState('street');
   const [activePreset, setActivePreset] = useState('7d');
   const [customStart, setCustomStart] = useState(() => toInputValue(new Date(Date.now() - 7 * 86400000)));
   const [customEnd, setCustomEnd] = useState(() => toInputValue(new Date()));
@@ -403,31 +404,41 @@ export const DataLoggerDetailPage = () => {
               {parseFloat(logger.latitude).toFixed(6)}, {parseFloat(logger.longitude).toFixed(6)}
             </span>
           </div>
-          <MapContainer
-            center={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}
-            zoom={13}
-            style={{ height: '420px', width: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}>
-              <Popup>
-                <strong>{logger.name}</strong>
-                {logger.serial_number && <><br /><code>{logger.serial_number}</code></>}
-                {logger.description && <><br />{logger.description}</>}
-                {latest && (
-                  <>
-                    <br /><br />
-                    <b>Temperature:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
-                    <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
-                    <b>Last seen:</b> {formatRelativeTime(latest.timestamp)}
-                  </>
-                )}
-              </Popup>
-            </Marker>
-          </MapContainer>
+          <div className="relative">
+            <MapContainer
+              center={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}
+              zoom={13}
+              style={{ height: '420px', width: '100%' }}
+              attributionControl={false}
+            >
+              <TileLayer url={
+                mapLayer === 'satellite'
+                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              } />
+              <Marker position={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}>
+                <Popup>
+                  <strong>{logger.name}</strong>
+                  {logger.serial_number && <><br /><code>{logger.serial_number}</code></>}
+                  {logger.description && <><br />{logger.description}</>}
+                  {latest && (
+                    <>
+                      <br /><br />
+                      <b>Temperature:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
+                      <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
+                      <b>Last seen:</b> {formatRelativeTime(latest.timestamp)}
+                    </>
+                  )}
+                </Popup>
+              </Marker>
+            </MapContainer>
+            <button
+              onClick={() => setMapLayer((l) => l === 'street' ? 'satellite' : 'street')}
+              className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              {mapLayer === 'street' ? <><MdSatellite size={15} /> Satellite</> : <><MdMap size={15} /> Street</>}
+            </button>
+          </div>
         </div>
       )}
     </div>

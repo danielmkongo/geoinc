@@ -106,14 +106,19 @@ const Dashboard = () => {
   const tempNormal = temperature >= 36 && temperature <= 39;
   const humidNormal = humidity >= 40 && humidity <= 70;
 
-  // Incubation day calculation
+  // Incubation day calculation — compare calendar dates in Tanzania time so the
+  // day increments at midnight EAT regardless of what time the batch was started.
   let incubationDay = null;
   if (incubationStart) {
     const startMs = typeof incubationStart === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(incubationStart)
       ? new Date(incubationStart.replace(' ', 'T') + 'Z').getTime()
       : new Date(incubationStart).getTime();
-    incubationDay = Math.floor((Date.now() - startMs) / (1000 * 60 * 60 * 24)) + 1;
-    if (incubationDay < 1) incubationDay = 1;
+    const toEATDate = (ms) => {
+      const d = new Date(new Date(ms).toLocaleDateString('en-CA', { timeZone: TZ }));
+      return d;
+    };
+    const diffDays = Math.round((toEATDate(Date.now()) - toEATDate(startMs)) / (1000 * 60 * 60 * 24));
+    incubationDay = Math.max(1, diffDays + 1);
   }
 
   return (

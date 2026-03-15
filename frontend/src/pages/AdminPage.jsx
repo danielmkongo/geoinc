@@ -133,8 +133,8 @@ const LoggerMap = ({ position, onChange }) => {
 
       {/* Map */}
       <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600" style={{ height: 280 }}>
-        <MapContainer center={[-1.286389, 36.817223]} zoom={6} style={{ height: '100%', width: '100%' }}>
-          <TileLayer url={TILES[layer].url} attribution={TILES[layer].attribution} />
+        <MapContainer center={[-1.286389, 36.817223]} zoom={6} style={{ height: '100%', width: '100%' }} attributionControl={false}>
+          <TileLayer url={TILES[layer].url} />
           <MapController flyTo={flyTo} />
           <MapPinPicker position={position} onChange={onChange} />
         </MapContainer>
