@@ -89,8 +89,8 @@ export const Sidebar = () => {
               <span className="text-xl">🌱</span>
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-base leading-tight">TGDC</h1>
-              <p className="text-slate-400 text-xs">IoT Monitoring Platform</p>
+              <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
+              <p className="text-slate-400 text-xs">TGDC IoT Monitoring Platform</p>
             </div>
           </div>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border
