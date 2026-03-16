@@ -7,6 +7,7 @@ import {
 } from 'react-icons/md';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { authAPI } from '../services/api';
 
 
 const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, onClick }) => (
@@ -47,7 +48,8 @@ export const Sidebar = () => {
   const { darkMode, toggleTheme } = useTheme();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isSuperAdmin = user?.role === 'super_admin';
   const close = () => setIsOpen(false);
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
@@ -133,7 +135,7 @@ export const Sidebar = () => {
                 {avatarLetter}
               </div>
               {isAdmin && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-slate-900 flex items-center justify-center">
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 flex items-center justify-center ${isSuperAdmin ? 'bg-purple-500' : 'bg-amber-500'}`}>
                   <MdShield size={7} className="text-slate-900" />
                 </div>
               )}
@@ -141,7 +143,12 @@ export const Sidebar = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
                 <p className="text-white text-sm font-semibold truncate">{displayName}</p>
-                {isAdmin && (
+                {isSuperAdmin && (
+                  <span className="flex-shrink-0 text-xs font-bold text-purple-400 bg-purple-500/15 border border-purple-500/25 px-1.5 py-0.5 rounded-md leading-none">
+                    super admin
+                  </span>
+                )}
+                {!isSuperAdmin && isAdmin && (
                   <span className="flex-shrink-0 text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-md leading-none">
                     admin
                   </span>
@@ -150,7 +157,7 @@ export const Sidebar = () => {
               <p className="text-slate-400 text-xs truncate">{user?.email || user?.username}</p>
             </div>
             <button
-              onClick={logout}
+              onClick={async () => { try { await authAPI.logout(); } catch {} logout(); }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
               title="Logout"
             >

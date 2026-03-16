@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { MdError, MdLogin } from 'react-icons/md';
 import { useAuth } from '../hooks/useAuth';
 import { authAPI } from '../services/api';
+import logo from '../assets/logo.png';
 
 export const LoginPage = () => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { login } = useAuth();
@@ -20,6 +21,8 @@ export const LoginPage = () => {
       const response = await authAPI.login(username, password);
       const { token, user } = response.data;
       login(user, token);
+      const displayName = user.full_name || user.username;
+      sessionStorage.setItem('welcomeUser', displayName);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Login failed');
@@ -37,11 +40,11 @@ export const LoginPage = () => {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/40 mb-4">
-            <span className="text-3xl">🥚</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-2xl mb-4 overflow-hidden">
+            <img src={logo} alt="TGDC" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Joto Ardhi</h1>
-          <p className="text-slate-400 text-sm mt-1">IoT Monitoring Platform</p>
+          <h1 className="text-2xl font-bold text-white">TGDC IoT Monitoring Platform</h1>
+          <p className="text-slate-400 text-sm mt-1">Joto Ardhi</p>
         </div>
 
         {/* Card */}
@@ -98,14 +101,6 @@ export const LoginPage = () => {
               )}
             </button>
           </form>
-
-          <div className="mt-5 pt-4 border-t border-slate-700/50">
-            <p className="text-xs text-slate-500 text-center mb-2">Demo credentials</p>
-            <div className="flex justify-center gap-4 text-xs">
-              <span className="text-slate-400">User: <span className="font-mono text-slate-300">admin</span></span>
-              <span className="text-slate-400">Pass: <span className="font-mono text-slate-300">admin123</span></span>
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-slate-600 text-xs mt-6">

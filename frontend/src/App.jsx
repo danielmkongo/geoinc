@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -27,8 +27,39 @@ const ProtectedRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role !== 'admin') return <Navigate to="/" replace />;
+  if (user?.role !== 'admin' && user?.role !== 'super_admin') return <Navigate to="/" replace />;
   return <MainLayout>{children}</MainLayout>;
+};
+
+// Welcome toast shown once after login
+const WelcomeToast = () => {
+  const [name, setName] = useState(null);
+
+  useEffect(() => {
+    const welcome = sessionStorage.getItem('welcomeUser');
+    if (welcome) {
+      setName(welcome);
+      sessionStorage.removeItem('welcomeUser');
+      const t = setTimeout(() => setName(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  if (!name) return null;
+
+  return (
+    <div className="fixed top-5 right-5 z-[9999] animate-slideIn">
+      <div className="flex items-center gap-3 px-5 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl shadow-black/40">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+          {name[0].toUpperCase()}
+        </div>
+        <div>
+          <p className="text-white font-semibold text-sm">Welcome back, {name}!</p>
+          <p className="text-slate-400 text-xs">You are now logged in</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const AppContent = () => {
@@ -36,6 +67,7 @@ const AppContent = () => {
 
   return (
     <Router>
+      <WelcomeToast />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

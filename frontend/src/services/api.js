@@ -30,6 +30,7 @@ apiClient.interceptors.response.use(
 export const authAPI = {
   login: (username, password) =>
     apiClient.post('/auth/login', { username, password }),
+  logout: () => apiClient.post('/auth/logout'),
 };
 
 export const devicesAPI = {
@@ -106,6 +107,14 @@ export const adminAPI = {
   createDataLogger: (data) => apiClient.post('/admin/data-loggers', data),
   updateDataLogger: (id, data) => apiClient.put(`/admin/data-loggers/${id}`, data),
   deleteDataLogger: (id) => apiClient.delete(`/admin/data-loggers/${id}`),
+  requestDeleteDataLogger: (id) => apiClient.post(`/admin/data-loggers/${id}/request-delete`),
+  // Deletion requests (super_admin)
+  getDeletionRequests: () => apiClient.get('/admin/deletion-requests'),
+  approveDeletion: (id) => apiClient.post(`/admin/deletion-requests/${id}/approve`),
+  rejectDeletion: (id, note) => apiClient.post(`/admin/deletion-requests/${id}/reject`, { note }),
+  // Sessions (super_admin)
+  getSessions: () => apiClient.get('/admin/sessions'),
+  revokeSession: (id) => apiClient.delete(`/admin/sessions/${id}`),
 };
 
 export const dataLoggersAPI = {

@@ -26,6 +26,10 @@ const migrations = [
   'ALTER TABLE users ADD COLUMN email TEXT',
   'ALTER TABLE users ADD COLUMN full_name TEXT',
   'ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1',
+  // Sessions table
+  `CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+  // Deletion requests
+  `CREATE TABLE IF NOT EXISTS deletion_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, resource_type TEXT NOT NULL, resource_id INTEGER NOT NULL, resource_name TEXT NOT NULL, requested_by INTEGER NOT NULL REFERENCES users(id), requested_at DATETIME DEFAULT CURRENT_TIMESTAMP, status TEXT DEFAULT 'pending', reviewed_by INTEGER REFERENCES users(id), reviewed_at DATETIME, rejection_note TEXT)`,
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* column already exists — skip */ }

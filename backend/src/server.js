@@ -39,6 +39,9 @@ const wsManager = new WebSocketManager(app);
 const mqttService = new MQTTService();
 const healthService = new HealthService(db, mqttService);
 
+// Make wsManager accessible to route handlers via req.app.get('wsManager')
+app.set('wsManager', wsManager);
+
 // WebSocket endpoint
 app.ws('/ws', (ws, req) => {
   wsManager.handleConnection(ws, req);

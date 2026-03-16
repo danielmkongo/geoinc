@@ -236,16 +236,28 @@ const Field = ({ label, children }) => (
 
 // ─── Role Badge ───────────────────────────────────────────────────────────────
 
-const RoleBadge = ({ role }) =>
-  role === 'admin' ? (
+const RoleBadge = ({ role }) => {
+  if (role === 'super_admin') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+      <MdShield size={11} /> super admin
+    </span>
+  );
+  if (role === 'admin') return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
       <MdShield size={11} /> admin
     </span>
-  ) : (
+  );
+  if (role === 'operator') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+      <MdPerson size={11} /> operator
+    </span>
+  );
+  return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-600/50 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-600">
       <MdPerson size={11} /> user
     </span>
   );
+};
 
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
@@ -274,6 +286,18 @@ export const AdminPage = () => {
   const [loggersLoading, setLoggersLoading] = useState(true);
   const [loggerPin, setLoggerPin] = useState(null); // { lat, lng }
   const [copiedKey, setCopiedKey] = useState(null);
+
+  // ── Deletion Requests (super_admin) ────────────────────────────────────────
+  const [deletionRequests, setDeletionRequests] = useState([]);
+  const [deletionLoading, setDeletionLoading] = useState(false);
+  const [rejectModal, setRejectModal] = useState(null); // { id, resourceName }
+  const [rejectNote, setRejectNote] = useState('');
+
+  // ── Sessions (super_admin) ─────────────────────────────────────────────────
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  const isSuperAdmin = currentUser?.role === 'super_admin';
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -318,11 +342,47 @@ export const AdminPage = () => {
     }
   }, [showToast]);
 
+  const loadDeletionRequests = useCallback(async () => {
+    setDeletionLoading(true);
+    try {
+      const res = await adminAPI.getDeletionRequests();
+      setDeletionRequests(res.data.requests);
+    } catch {
+      showToast('Failed to load deletion requests', 'error');
+    } finally {
+      setDeletionLoading(false);
+    }
+  }, [showToast]);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const res = await adminAPI.getSessions();
+      setSessions(res.data.sessions);
+    } catch {
+      showToast('Failed to load sessions', 'error');
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [showToast]);
+
   useEffect(() => {
     loadUsers();
     loadFirmware();
     loadLoggers();
-  }, [loadUsers, loadFirmware, loadLoggers]);
+    if (isSuperAdmin) {
+      loadDeletionRequests();
+      loadSessions();
+    }
+  }, [loadUsers, loadFirmware, loadLoggers, loadDeletionRequests, loadSessions, isSuperAdmin]);
+
+  // Live updates: reload deletion requests when WS broadcasts deletion_request_update
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const handler = () => { loadDeletionRequests(); loadLoggers(); };
+    window.addEventListener('deletion_request_update', handler);
+    return () => window.removeEventListener('deletion_request_update', handler);
+  }, [isSuperAdmin, loadDeletionRequests, loadLoggers]);
 
   // ── User helpers ───────────────────────────────────────────────────────────
 
@@ -477,8 +537,22 @@ export const AdminPage = () => {
   };
 
   const openDeleteLogger = (logger) => {
-    setSelectedUser(logger);
-    setModal('logger_delete');
+    if (isSuperAdmin) {
+      setSelectedUser(logger);
+      setModal('logger_delete');
+    } else {
+      handleRequestDeleteLogger(logger);
+    }
+  };
+
+  const handleRequestDeleteLogger = async (logger) => {
+    try {
+      await adminAPI.requestDeleteDataLogger(logger.id);
+      showToast('Deletion request submitted — awaiting super admin approval');
+      loadLoggers();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to submit deletion request', 'error');
+    }
   };
 
   const handleRegisterLogger = async (e) => {
@@ -548,6 +622,10 @@ export const AdminPage = () => {
     { id: 'users', label: 'Users', icon: <MdPeople size={16} /> },
     { id: 'loggers', label: 'Data Loggers', icon: <MdRouter size={16} /> },
     { id: 'firmware', label: 'Firmware (OTA)', icon: <MdSystemUpdate size={16} /> },
+    ...(isSuperAdmin ? [
+      { id: 'deletions', label: `Deletions${deletionRequests.length ? ` (${deletionRequests.length})` : ''}`, icon: <MdDelete size={16} /> },
+      { id: 'sessions', label: 'Sessions', icon: <MdShield size={16} /> },
+    ] : []),
   ];
 
   return (
@@ -564,7 +642,7 @@ export const AdminPage = () => {
           <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Manage users, data loggers, and firmware updates</p>
         </div>
         <button
-          onClick={() => { loadUsers(); loadFirmware(); loadLoggers(); }}
+          onClick={() => { loadUsers(); loadFirmware(); loadLoggers(); if (isSuperAdmin) { loadDeletionRequests(); loadSessions(); } }}
           className="p-2.5 rounded-xl bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
           title="Refresh all"
         >
@@ -736,6 +814,14 @@ export const AdminPage = () => {
                           <div>
                             <p className="text-gray-900 dark:text-white font-medium">{lg.name}</p>
                             {lg.description && <p className="text-gray-500 dark:text-slate-400 text-xs truncate max-w-[160px]">{lg.description}</p>}
+                            {lg.deletion_status === 'rejected' && lg.rejection_note && (
+                              <p className="text-red-400 text-xs mt-0.5 flex items-center gap-1">
+                                <MdCancel size={11} /> Delete denied: {lg.rejection_note}
+                              </p>
+                            )}
+                            {lg.deletion_status === 'pending' && isSuperAdmin && (
+                              <p className="text-amber-400 text-xs mt-0.5">Deletion pending approval</p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -764,7 +850,12 @@ export const AdminPage = () => {
                           <button onClick={() => openEditLogger(lg)} className="p-1.5 rounded-lg text-gray-400 dark:text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors" title="Edit">
                             <MdEdit size={16} />
                           </button>
-                          <button onClick={() => openDeleteLogger(lg)} className="p-1.5 rounded-lg text-gray-400 dark:text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete">
+                          <button
+                            onClick={() => openDeleteLogger(lg)}
+                            disabled={lg.deletion_status === 'pending'}
+                            className={`p-1.5 rounded-lg transition-colors ${lg.deletion_status === 'pending' ? 'text-gray-300 dark:text-slate-600 cursor-not-allowed' : 'text-gray-400 dark:text-slate-400 hover:text-red-400 hover:bg-red-500/10'}`}
+                            title={isSuperAdmin ? 'Delete' : lg.deletion_status === 'pending' ? 'Deletion pending' : 'Request Delete'}
+                          >
                             <MdDelete size={16} />
                           </button>
                         </div>
@@ -891,6 +982,7 @@ export const AdminPage = () => {
                 <option value="user">User</option>
                 <option value="operator">Operator</option>
                 <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
               </select>
             </Field>
             <div className="flex justify-end gap-3 pt-2">
@@ -919,6 +1011,7 @@ export const AdminPage = () => {
                 <option value="user">User</option>
                 <option value="operator">Operator</option>
                 <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
               </select>
             </Field>
             <div className="flex justify-end gap-3 pt-2">
@@ -1117,6 +1210,153 @@ export const AdminPage = () => {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ═══════════════════════════════════════════════════
+          DELETION REQUESTS TAB (super_admin)
+      ═══════════════════════════════════════════════════ */}
+      {activeTab === 'deletions' && isSuperAdmin && (
+        <div className="bg-white dark:bg-slate-900/60 border border-gray-200/80 dark:border-slate-700/50 rounded-2xl p-5 lg:p-6 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-gray-900 dark:text-white font-semibold text-lg flex items-center gap-2">
+                <MdDelete size={20} className="text-red-400" /> Pending Deletion Requests
+              </h2>
+              <p className="text-gray-500 dark:text-slate-400 text-sm mt-0.5">Admins have requested these items be deleted. Approve or reject each request.</p>
+            </div>
+            <button onClick={loadDeletionRequests} className="p-2.5 rounded-xl bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 transition-colors" title="Refresh"><MdRefresh size={18} /></button>
+          </div>
+          {deletionLoading ? (
+            <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+          ) : deletionRequests.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 dark:text-slate-500">No pending deletion requests</div>
+          ) : (
+            <div className="space-y-3">
+              {deletionRequests.map((dr) => (
+                <div key={dr.id} className="flex items-center justify-between p-4 rounded-xl border bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/40">
+                  <div>
+                    <p className="text-gray-900 dark:text-white font-medium">{dr.resource_name}</p>
+                    <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">
+                      {dr.resource_type === 'data_logger' ? 'Data Logger' : 'Device'} · Requested by <span className="font-medium">{dr.requested_by_fullname || dr.requested_by_username}</span> · {new Date(dr.requested_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                    <button
+                      onClick={async () => { try { await adminAPI.approveDeletion(dr.id); showToast('Deletion approved'); loadDeletionRequests(); loadLoggers(); } catch (err) { showToast(err.response?.data?.error || 'Failed', 'error'); } }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-semibold transition-colors"
+                    >
+                      <MdCheck size={14} /> Approve
+                    </button>
+                    <button
+                      onClick={() => { setRejectModal({ id: dr.id, resourceName: dr.resource_name }); setRejectNote(''); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold transition-colors"
+                    >
+                      <MdClose size={14} /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════
+          SESSIONS TAB (super_admin)
+      ═══════════════════════════════════════════════════ */}
+      {activeTab === 'sessions' && isSuperAdmin && (
+        <div className="bg-white dark:bg-slate-900/60 border border-gray-200/80 dark:border-slate-700/50 rounded-2xl p-5 lg:p-6 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-gray-900 dark:text-white font-semibold text-lg flex items-center gap-2">
+                <MdShield size={20} className="text-purple-400" /> Active Sessions
+              </h2>
+              <p className="text-gray-500 dark:text-slate-400 text-sm mt-0.5">All currently logged-in users. Revoke a session to force logout.</p>
+            </div>
+            <button onClick={loadSessions} className="p-2.5 rounded-xl bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 transition-colors" title="Refresh"><MdRefresh size={18} /></button>
+          </div>
+          {sessionsLoading ? (
+            <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
+          ) : sessions.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 dark:text-slate-500">No active sessions</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-700/50">
+                    <th className="text-left px-4 py-2 font-semibold">User</th>
+                    <th className="text-left px-4 py-2 font-semibold">Role</th>
+                    <th className="text-left px-4 py-2 font-semibold">Login Time</th>
+                    <th className="text-left px-4 py-2 font-semibold">Expires</th>
+                    <th className="text-right px-4 py-2 font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-700/40">
+                  {sessions.map((s) => (
+                    <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="text-gray-900 dark:text-white font-medium">{s.username}</p>
+                        {s.full_name && <p className="text-gray-500 dark:text-slate-400 text-xs">{s.full_name}</p>}
+                      </td>
+                      <td className="px-4 py-3"><RoleBadge role={s.role} /></td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-slate-300 text-xs">{new Date(s.created_at).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-slate-300 text-xs">{new Date(s.expires_at).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right">
+                        {s.user_id !== currentUser?.id ? (
+                          <button
+                            onClick={async () => { try { await adminAPI.revokeSession(s.id); showToast('Session revoked'); loadSessions(); } catch { showToast('Failed to revoke', 'error'); } }}
+                            className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold transition-colors"
+                          >
+                            Revoke
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-slate-500 italic">Current</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Reject Deletion Modal */}
+      {rejectModal && (
+        <Modal title="Reject Deletion Request" onClose={() => setRejectModal(null)}>
+          <div className="space-y-4">
+            <p className="text-gray-700 dark:text-slate-300 text-sm">Rejecting deletion of <strong>{rejectModal.resourceName}</strong>. The admin will see your reason.</p>
+            <div>
+              <label className={labelCls}>Reason (optional)</label>
+              <input
+                className={inputCls}
+                placeholder="e.g. Device still has active readings"
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setRejectModal(null)} className="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 font-semibold text-sm transition-colors">Cancel</button>
+              <button
+                onClick={async () => {
+                  try {
+                    await adminAPI.rejectDeletion(rejectModal.id, rejectNote);
+                    showToast('Deletion request rejected');
+                    setRejectModal(null);
+                    loadDeletionRequests();
+                    loadLoggers();
+                  } catch (err) {
+                    showToast(err.response?.data?.error || 'Failed to reject', 'error');
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm transition-colors"
+              >
+                Reject Request
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

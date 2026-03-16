@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import db from '../db/connection.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -15,9 +16,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    // Get user from database
     const result = await db.query(
-      'SELECT id, username, password_hash, role FROM users WHERE username = ?',
+      'SELECT id, username, password_hash, role, full_name, email FROM users WHERE username = ? AND is_active = 1',
       [username]
     );
 
@@ -27,28 +27,26 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Verify password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Update last login
-    await db.query(
-      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
-      [user.id]
-    );
+    await db.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
 
-    // Generate JWT token
     const token = jwt.sign(
-      {
-        id: user.id,
-        username: user.username,
-        role: user.role
-      },
+      { id: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
+    );
+
+    // Create a session record
+    const sessionId = crypto.randomUUID();
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await db.query(
+      'INSERT INTO sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
+      [sessionId, user.id, tokenHash, expiresAt]
     );
 
     res.json({
@@ -56,9 +54,11 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        role: user.role
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
       },
-      expiresIn: 86400
+      expiresIn: 86400,
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -66,30 +66,16 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Refresh token (optional)
-router.post('/refresh', (req, res) => {
+// Logout — invalidates current session
+router.post('/logout', authMiddleware, async (req, res) => {
   try {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ error: 'Token required' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const newToken = jwt.sign(
-      {
-        id: decoded.id,
-        username: decoded.username,
-        role: decoded.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({ token: newToken });
+    const token = req.headers.authorization?.split(' ')[1];
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    await db.query('DELETE FROM sessions WHERE token_hash = ?', [tokenHash]);
+    res.json({ message: 'Logged out successfully' });
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
@@ -125,7 +111,7 @@ router.put('/me', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /auth/change-password - change own password
+// POST /auth/change-password
 router.post('/change-password', authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -145,6 +131,23 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// POST /auth/refresh
+router.post('/refresh', (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token required' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const newToken = jwt.sign(
+      { id: decoded.id, username: decoded.username, role: decoded.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    res.json({ token: newToken });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
   }
 });
 

@@ -63,6 +63,10 @@ export const useWebSocket = () => {
           });
           break;
 
+        case 'deletion_request_update':
+          window.dispatchEvent(new CustomEvent('deletion_request_update'));
+          break;
+
         case 'connected':
           console.log('WebSocket connected');
           setWSConnected(true);
