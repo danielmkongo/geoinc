@@ -72,11 +72,30 @@ router.get('/:deviceId/status', async (req, res) => {
   }
 });
 
-// Reset incubation start date (sets today as day 1 and notifies device)
+// Start a new incubation batch (records egg type, count; resets timer; notifies device)
 router.put('/:deviceId/incubation-start', async (req, res) => {
   try {
     const { deviceId } = req.params;
+    const { egg_type, egg_count } = req.body;
 
+    if (!egg_type || !egg_count || egg_count < 1) {
+      return res.status(400).json({ error: 'egg_type and egg_count are required' });
+    }
+
+    // End any currently active batch for this device
+    await db.query(
+      `UPDATE batches SET status = 'ended', ended_at = CURRENT_TIMESTAMP
+       WHERE device_id = ? AND status = 'active'`,
+      [deviceId]
+    );
+
+    // Create new batch record
+    await db.query(
+      'INSERT INTO batches (device_id, egg_type, egg_count) VALUES (?, ?, ?)',
+      [deviceId, egg_type, egg_count]
+    );
+
+    // Update device incubation_start
     await db.query(
       'UPDATE devices SET incubation_start = CURRENT_TIMESTAMP WHERE id = ?',
       [deviceId]
@@ -88,12 +107,10 @@ router.put('/:deviceId/incubation-start', async (req, res) => {
     );
 
     const incubationStart = result.rows[0]?.incubation_start;
-    // Convert stored datetime string to Unix epoch seconds for the device
     const startTs = incubationStart
       ? Math.floor(new Date(incubationStart.replace(' ', 'T') + 'Z').getTime() / 1000)
       : Math.floor(Date.now() / 1000);
 
-    // Send start timestamp to device so it can write it to LittleFS
     try {
       const { mqttService } = await import('../server.js');
       await mqttService.publishIncubationReset(startTs);
@@ -101,10 +118,77 @@ router.put('/:deviceId/incubation-start', async (req, res) => {
       console.error('MQTT incubation reset failed (non-fatal):', mqttError.message);
     }
 
-    res.json({ incubation_start: incubationStart });
+    res.json({ incubation_start: incubationStart, egg_type, egg_count });
   } catch (error) {
-    console.error('Reset incubation start error:', error);
-    res.status(500).json({ error: 'Failed to reset incubation start' });
+    console.error('Start batch error:', error);
+    res.status(500).json({ error: 'Failed to start batch' });
+  }
+});
+
+// End the current active batch
+router.post('/:deviceId/batch/end', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { end_reason, successful_hatches } = req.body;
+
+    if (!end_reason) {
+      return res.status(400).json({ error: 'end_reason is required' });
+    }
+
+    const batch = await db.query(
+      `SELECT id FROM batches WHERE device_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1`,
+      [deviceId]
+    );
+
+    if (batch.rows.length === 0) {
+      return res.status(404).json({ error: 'No active batch found' });
+    }
+
+    await db.query(
+      `UPDATE batches SET status = 'ended', ended_at = CURRENT_TIMESTAMP, end_reason = ?, successful_hatches = ?
+       WHERE id = ?`,
+      [end_reason, successful_hatches ?? null, batch.rows[0].id]
+    );
+
+    await db.query(
+      'UPDATE devices SET incubation_start = NULL WHERE id = ?',
+      [deviceId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('End batch error:', error);
+    res.status(500).json({ error: 'Failed to end batch' });
+  }
+});
+
+// Get the current active batch for a device
+router.get('/:deviceId/batch/current', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const result = await db.query(
+      `SELECT * FROM batches WHERE device_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1`,
+      [deviceId]
+    );
+    res.json({ batch: result.rows[0] ?? null });
+  } catch (error) {
+    console.error('Get current batch error:', error);
+    res.status(500).json({ error: 'Failed to fetch batch' });
+  }
+});
+
+// Get batch history for a device (for reports)
+router.get('/:deviceId/batches', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const result = await db.query(
+      `SELECT * FROM batches WHERE device_id = ? ORDER BY started_at DESC`,
+      [deviceId]
+    );
+    res.json({ batches: result.rows });
+  } catch (error) {
+    console.error('Get batch history error:', error);
+    res.status(500).json({ error: 'Failed to fetch batches' });
   }
 });
 

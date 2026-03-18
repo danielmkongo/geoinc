@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass, MdEgg, MdMemory,
+  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass, MdEgg, MdMemory, MdClose,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
@@ -50,6 +50,18 @@ const Dashboard = () => {
   const [alertsLoaded, setAlertsLoaded] = useState(false);
   const [now, setNow] = useState(new Date());
   const [resetting, setResetting] = useState(false);
+  const [currentBatch, setCurrentBatch] = useState(null);
+
+  // New Batch modal state
+  const [showNewBatchModal, setShowNewBatchModal] = useState(false);
+  const [batchEggType, setBatchEggType] = useState('chicken');
+  const [batchEggCount, setBatchEggCount] = useState('');
+
+  // End Batch modal state
+  const [showEndBatchModal, setShowEndBatchModal] = useState(false);
+  const [endReason, setEndReason] = useState('');
+  const [successfulHatches, setSuccessfulHatches] = useState('');
+  const [ending, setEnding] = useState(false);
 
   useWebSocket();
 
@@ -79,17 +91,52 @@ const Dashboard = () => {
     }
   }, [serverLastUpdate, resetActuators]);
 
-  const handleNewBatch = async () => {
-    if (!window.confirm('Start a new incubation batch? This will reset the incubation timer to today and notify the device to clear its stored start date.')) return;
+  // Load current batch on mount
+  useEffect(() => {
+    if (!deviceId) return;
+    devicesAPI.getCurrentBatch(deviceId)
+      .then((res) => setCurrentBatch(res.data.batch))
+      .catch(() => {});
+  }, [deviceId]);
+
+  const handleConfirmNewBatch = async () => {
+    if (!batchEggCount || parseInt(batchEggCount) < 1) return;
     try {
       setResetting(true);
-      const res = await devicesAPI.resetIncubationStart(deviceId);
+      const res = await devicesAPI.resetIncubationStart(deviceId, {
+        egg_type: batchEggType,
+        egg_count: parseInt(batchEggCount),
+      });
       setIncubationStart(res.data.incubation_start);
+      setCurrentBatch({ egg_type: batchEggType, egg_count: parseInt(batchEggCount), status: 'active' });
+      setShowNewBatchModal(false);
+      setBatchEggCount('');
     } catch (err) {
-      console.error('Failed to reset incubation start:', err);
-      alert('Failed to reset incubation start. Please try again.');
+      console.error('Failed to start batch:', err);
+      alert('Failed to start batch. Please try again.');
     } finally {
       setResetting(false);
+    }
+  };
+
+  const handleConfirmEndBatch = async () => {
+    if (!endReason.trim()) return;
+    try {
+      setEnding(true);
+      await devicesAPI.endBatch(deviceId, {
+        end_reason: endReason.trim(),
+        successful_hatches: successfulHatches !== '' ? parseInt(successfulHatches) : null,
+      });
+      setIncubationStart(null);
+      setCurrentBatch(null);
+      setShowEndBatchModal(false);
+      setEndReason('');
+      setSuccessfulHatches('');
+    } catch (err) {
+      console.error('Failed to end batch:', err);
+      alert('Failed to end batch. Please try again.');
+    } finally {
+      setEnding(false);
     }
   };
 
@@ -133,13 +180,21 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {currentBatch && (
+            <button
+              onClick={() => setShowEndBatchModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-700 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+            >
+              End Batch
+            </button>
+          )}
           <button
-            onClick={handleNewBatch}
+            onClick={() => setShowNewBatchModal(true)}
             disabled={resetting}
             className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
           >
             <MdEgg size={14} />
-            {resetting ? 'Resetting...' : 'New Batch'}
+            New Batch
           </button>
           {isOnline ? (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
@@ -202,7 +257,11 @@ const Dashboard = () => {
           iconBg={incubationDay !== null && incubationDay > 18 ? 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-emerald-400/40' : 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-400/40'}
           trend={incubationDay !== null && incubationDay > 18 ? 'Hatching soon' : incubationDay !== null ? 'In progress' : 'Not set'}
           trendClass={incubationDay !== null && incubationDay > 18 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}
-          subtitle={incubationDay !== null ? `${Math.max(0, 21 - incubationDay)} days remaining` : 'Click New Batch to start'}
+          subtitle={
+            incubationDay !== null
+              ? `${Math.max(0, 21 - incubationDay)} days remaining${currentBatch ? ` · ${currentBatch.egg_count} ${currentBatch.egg_type} eggs` : ''}`
+              : 'Click New Batch to start'
+          }
         />
         <StatCard
           title="Alerts"
@@ -285,6 +344,130 @@ const Dashboard = () => {
         </div>
         <AlertsPanel />
       </div>
+
+      {/* New Batch Modal */}
+      {showNewBatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <MdEgg size={20} className="text-amber-500" />
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">Start New Batch</h2>
+              </div>
+              <button onClick={() => setShowNewBatchModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <MdClose size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Egg Type</label>
+                <select
+                  value={batchEggType}
+                  onChange={(e) => setBatchEggType(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="chicken">Chicken</option>
+                  <option value="turkey">Turkey</option>
+                  <option value="duck">Duck</option>
+                  <option value="goose">Goose</option>
+                  <option value="quail">Quail</option>
+                  <option value="other">Other domestic bird</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Number of Eggs</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={batchEggCount}
+                  onChange={(e) => setBatchEggCount(e.target.value)}
+                  placeholder="e.g. 50"
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500">This will reset the incubation timer to today and notify the device.</p>
+            </div>
+            <div className="flex gap-3 p-6 pt-0">
+              <button
+                onClick={() => setShowNewBatchModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmNewBatch}
+                disabled={resetting || !batchEggCount || parseInt(batchEggCount) < 1}
+                className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 rounded-lg text-sm font-semibold text-white transition-colors"
+              >
+                {resetting ? 'Starting...' : 'Start Batch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* End Batch Modal */}
+      {showEndBatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">End Current Batch</h2>
+              <button onClick={() => setShowEndBatchModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <MdClose size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Reason for Ending <span className="text-red-400">*</span></label>
+                <select
+                  value={endReason}
+                  onChange={(e) => setEndReason(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="completed">Completed — hatching done</option>
+                  <option value="infertile">Eggs were infertile</option>
+                  <option value="power_failure">Power failure / equipment issue</option>
+                  <option value="disease">Disease / contamination</option>
+                  <option value="cancelled">Cancelled manually</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Successful Hatches</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={successfulHatches}
+                  onChange={(e) => setSuccessfulHatches(e.target.value)}
+                  placeholder="Number of eggs that hatched"
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+                {currentBatch?.egg_count && successfulHatches !== '' && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Hatch rate: {Math.round((parseInt(successfulHatches) / currentBatch.egg_count) * 100)}% ({currentBatch.egg_count} eggs total)
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-3 p-6 pt-0">
+              <button
+                onClick={() => setShowEndBatchModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmEndBatch}
+                disabled={ending || !endReason}
+                className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg text-sm font-semibold text-white transition-colors"
+              >
+                {ending ? 'Ending...' : 'End Batch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

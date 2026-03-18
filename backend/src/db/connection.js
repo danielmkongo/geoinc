@@ -30,6 +30,8 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
   // Deletion requests
   `CREATE TABLE IF NOT EXISTS deletion_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, resource_type TEXT NOT NULL, resource_id INTEGER NOT NULL, resource_name TEXT NOT NULL, requested_by INTEGER NOT NULL REFERENCES users(id), requested_at DATETIME DEFAULT CURRENT_TIMESTAMP, status TEXT DEFAULT 'pending', reviewed_by INTEGER REFERENCES users(id), reviewed_at DATETIME, rejection_note TEXT)`,
+  // Incubation batches
+  `CREATE TABLE IF NOT EXISTS batches (id INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE, egg_type TEXT NOT NULL, egg_count INTEGER NOT NULL, started_at DATETIME DEFAULT CURRENT_TIMESTAMP, ended_at DATETIME, end_reason TEXT, successful_hatches INTEGER, status TEXT DEFAULT 'active')`,
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* column already exists — skip */ }

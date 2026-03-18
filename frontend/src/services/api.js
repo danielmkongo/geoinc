@@ -37,7 +37,10 @@ export const devicesAPI = {
   getAll: () => apiClient.get('/devices'),
   getById: (deviceId) => apiClient.get(`/devices/${deviceId}`),
   getStatus: (deviceId) => apiClient.get(`/devices/${deviceId}/status`),
-  resetIncubationStart: (deviceId) => apiClient.put(`/devices/${deviceId}/incubation-start`),
+  resetIncubationStart: (deviceId, data) => apiClient.put(`/devices/${deviceId}/incubation-start`, data),
+  getCurrentBatch: (deviceId) => apiClient.get(`/devices/${deviceId}/batch/current`),
+  endBatch: (deviceId, data) => apiClient.post(`/devices/${deviceId}/batch/end`, data),
+  getBatchHistory: (deviceId) => apiClient.get(`/devices/${deviceId}/batches`),
 };
 
 export const readingsAPI = {

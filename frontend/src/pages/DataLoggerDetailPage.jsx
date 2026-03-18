@@ -76,10 +76,10 @@ const TABLE_COLS = [
 // ── small components ──────────────────────────────────────────────────────────
 
 const StatCard = ({ label, value, unit, color }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-4">
+  <div className="bg-white dark:bg-slate-800 border-r border-b border-gray-100 dark:border-slate-700/50 p-4">
     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-1">{label}</p>
     <p className={`text-2xl font-bold ${color}`}>
-      {value !== null && value !== undefined ? `${Number(value).toFixed(1)}${unit}` : '—'}
+      {value !== null && value !== undefined ? `${Number(value).toFixed(1)}${unit}` : ''}
     </p>
   </div>
 );
@@ -313,10 +313,12 @@ export const DataLoggerDetailPage = () => {
         <div>
           {/* Latest stats */}
           {latest && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-              {CHARTS.map(({ key, label, textColor, unit }) => (
-                <StatCard key={key} label={label} value={latest[key]} unit={unit} color={textColor} />
-              ))}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm overflow-hidden mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                {CHARTS.map(({ key, label, textColor, unit }) => (
+                  <StatCard key={key} label={label} value={latest[key]} unit={unit} color={textColor} />
+                ))}
+              </div>
             </div>
           )}
 
@@ -361,15 +363,15 @@ export const DataLoggerDetailPage = () => {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                <tbody>
                   {readings.slice(0, 300).map((r, i) => (
-                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <tr key={i} className={`hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/50 dark:bg-slate-700/20'}`}>
                       <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {fmtShort(r.timestamp)}
                       </td>
                       {TABLE_COLS.slice(1).map(({ key }) => (
                         <td key={key} className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs whitespace-nowrap">
-                          {r[key] !== null && r[key] !== undefined ? Number(r[key]).toFixed(2) : '—'}
+                          {r[key] !== null && r[key] !== undefined ? Number(r[key]).toFixed(2) : ''}
                         </td>
                       ))}
                     </tr>
