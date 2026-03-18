@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   MdArrowBack, MdRefresh, MdDownload, MdCalendarToday, MdFilterList,
@@ -76,10 +76,10 @@ const TABLE_COLS = [
 // ── small components ──────────────────────────────────────────────────────────
 
 const StatCard = ({ label, value, unit, color }) => (
-  <div className="bg-white dark:bg-slate-800 border-r border-b border-gray-100 dark:border-slate-700/50 p-4">
+  <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-4">
     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mb-1">{label}</p>
     <p className={`text-2xl font-bold ${color}`}>
-      {value !== null && value !== undefined ? `${Number(value).toFixed(1)}${unit}` : ''}
+      {value !== null && value !== undefined ? `${Number(value).toFixed(1)}${unit}` : '—'}
     </p>
   </div>
 );
@@ -187,6 +187,25 @@ export const DataLoggerDetailPage = () => {
   };
 
   const hasLocation = logger?.latitude && logger?.longitude;
+
+  // Sort parameters: those with values first, nulls after
+  const sortedCharts = useMemo(() => {
+    if (!latest) return CHARTS;
+    return [...CHARTS].sort((a, b) => {
+      const aHas = latest[a.key] !== null && latest[a.key] !== undefined;
+      const bHas = latest[b.key] !== null && latest[b.key] !== undefined;
+      return aHas === bHas ? 0 : aHas ? -1 : 1;
+    });
+  }, [latest]);
+
+  const sortedTableCols = useMemo(() => {
+    if (readings.length === 0) return TABLE_COLS;
+    return [TABLE_COLS[0], ...[...TABLE_COLS.slice(1)].sort((a, b) => {
+      const aHas = readings.some((r) => r[a.key] !== null && r[a.key] !== undefined);
+      const bHas = readings.some((r) => r[b.key] !== null && r[b.key] !== undefined);
+      return aHas === bHas ? 0 : aHas ? -1 : 1;
+    })];
+  }, [readings]);
 
   if (loading && !logger) {
     return (
@@ -311,14 +330,12 @@ export const DataLoggerDetailPage = () => {
       {/* ── OVERVIEW TAB ──────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <div>
-          {/* Latest stats */}
+          {/* Latest stats — parameters with values first, then nulls */}
           {latest && (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm overflow-hidden mb-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-                {CHARTS.map(({ key, label, textColor, unit }) => (
-                  <StatCard key={key} label={label} value={latest[key]} unit={unit} color={textColor} />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+              {sortedCharts.map(({ key, label, textColor, unit }) => (
+                <StatCard key={key} label={label} value={latest[key]} unit={unit} color={textColor} />
+              ))}
             </div>
           )}
 
@@ -356,22 +373,22 @@ export const DataLoggerDetailPage = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
-                    {TABLE_COLS.map(({ key, label }) => (
+                    {sortedTableCols.map(({ key, label }) => (
                       <th key={key} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
                         {label}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                   {readings.slice(0, 300).map((r, i) => (
-                    <tr key={i} className={`hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/50 dark:bg-slate-700/20'}`}>
+                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                       <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {fmtShort(r.timestamp)}
                       </td>
-                      {TABLE_COLS.slice(1).map(({ key }) => (
+                      {sortedTableCols.slice(1).map(({ key }) => (
                         <td key={key} className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs whitespace-nowrap">
-                          {r[key] !== null && r[key] !== undefined ? Number(r[key]).toFixed(2) : ''}
+                          {r[key] !== null && r[key] !== undefined ? Number(r[key]).toFixed(2) : '—'}
                         </td>
                       ))}
                     </tr>
