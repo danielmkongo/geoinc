@@ -33,8 +33,8 @@ const Toast = ({ message, type, onClose }) => (
   <div
     className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-medium
       ${type === 'success'
-        ? 'bg-emerald-900/90 border-emerald-700 text-emerald-300'
-        : 'bg-red-900/90 border-red-700 text-red-300'
+        ? 'bg-white dark:bg-emerald-900/90 border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+        : 'bg-white dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-700 dark:text-red-300'
       }`}
   >
     {type === 'success' ? <MdCheck size={18} /> : <MdClose size={18} />}

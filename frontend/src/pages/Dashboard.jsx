@@ -244,7 +244,7 @@ const Dashboard = () => {
           <button
             onClick={() => setShowNewBatchModal(true)}
             disabled={resetting}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg text-blue-700 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50"
           >
             <MdEgg size={13} /> New Batch
           </button>
@@ -267,14 +267,14 @@ const Dashboard = () => {
 
       {/* ── Active batch banner ──────────────────────────────────────────── */}
       {incubationDay != null && (
-        <div className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 p-5">
+        <div className="relative overflow-hidden rounded-2xl border border-blue-200 dark:border-blue-800/40 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <MdEgg size={22} className="text-amber-600 dark:text-amber-400" />
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <MdEgg size={22} className="text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Active Batch</p>
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Active Batch</p>
                 <p className="font-bold text-gray-900 dark:text-white text-sm">
                   {currentBatch ? `${currentBatch.egg_count} ${currentBatch.egg_type.charAt(0).toUpperCase() + currentBatch.egg_type.slice(1)} Eggs` : 'Incubation in progress'}
                 </p>
@@ -296,9 +296,9 @@ const Dashboard = () => {
             </div>
           </div>
           {/* Progress bar */}
-          <div className="relative h-2 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden">
+          <div className="relative h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-700 ${incubationDay > 18 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+              className={`h-full rounded-full transition-all duration-700 ${incubationDay > 18 ? 'bg-emerald-500' : 'bg-blue-500'}`}
               style={{ width: `${batchProgress}%` }}
             />
           </div>
