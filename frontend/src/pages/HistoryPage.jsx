@@ -289,16 +289,20 @@ export const HistoryPage = () => {
                   return (
                     <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                       <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">
-                        {formatTs(r.created_at)}
+                        {formatTs(r.timestamp)}
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold
-                          ${tempOk
-                            ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                          }`}>
-                          {r.temperature.toFixed(2)}°C
-                        </span>
+                        {r.temperature != null ? (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold
+                            ${tempOk
+                              ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+                              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                            }`}>
+                            {r.temperature.toFixed(2)}°C
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300 dark:text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         {r.water_temperature != null ? (
@@ -310,9 +314,13 @@ export const HistoryPage = () => {
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-                          {r.humidity.toFixed(2)}%
-                        </span>
+                        {r.humidity != null ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                            {r.humidity.toFixed(2)}%
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300 dark:text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         <StatusPill isOn={r.pump_status} onColor="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
