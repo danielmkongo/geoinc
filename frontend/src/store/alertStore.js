@@ -1,43 +1,45 @@
 import { create } from 'zustand';
 
 export const useAlertStore = create((set) => ({
-  alerts: [],
+  alerts: [],       // active (unacknowledged) only
   unreadCount: 0,
-  isLoadingAlerts: false,
 
   addAlert: (alert) => {
-    set((state) => ({
-      alerts: [alert, ...state.alerts],
-      unreadCount: state.unreadCount + 1,
-    }));
+    set((state) => {
+      // If same type already active, update it instead of duplicating
+      const existing = state.alerts.find((a) => a.type === alert.type);
+      if (existing) {
+        return {
+          alerts: state.alerts.map((a) =>
+            a.type === alert.type
+              ? { ...a, value: alert.value, occurrence_count: (a.occurrence_count || 1) + 1, last_seen_at: alert.created_at }
+              : a
+          ),
+        };
+      }
+      return {
+        alerts: [alert, ...state.alerts],
+        unreadCount: state.unreadCount + 1,
+      };
+    });
   },
 
   setAlerts: (alerts) => {
-    const unreadCount = alerts.filter((a) => !a.acknowledged).length;
-    set({ alerts, unreadCount });
+    set({ alerts, unreadCount: alerts.length });
   },
 
+  // Remove from active list when acknowledged (moves to history on the server)
   acknowledgeAlert: (alertId) => {
     set((state) => ({
-      alerts: state.alerts.map((a) =>
-        a.id === alertId ? { ...a, acknowledged: true } : a
-      ),
+      alerts: state.alerts.filter((a) => a.id !== alertId),
       unreadCount: Math.max(0, state.unreadCount - 1),
     }));
   },
 
   clearUnread: () => {
-    set((state) => ({
-      alerts: state.alerts.map((a) => ({ ...a, acknowledged: true })),
-      unreadCount: 0,
-    }));
-  },
-
-  setLoadingAlerts: (isLoading) => {
-    set({ isLoadingAlerts: isLoading });
-  },
-
-  clearAlerts: () => {
     set({ alerts: [], unreadCount: 0 });
   },
+
+  setLoadingAlerts: () => {},
+  clearAlerts: () => set({ alerts: [], unreadCount: 0 }),
 }));

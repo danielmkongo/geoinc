@@ -180,12 +180,12 @@ export class MQTTService {
         [1, pump ? 1 : 0, egg_rotation_motor ? 1 : 0, exhaust_fan ? 1 : 0, inlet_fan ? 1 : 0, radiator_fan ? 1 : 0]
       );
 
-      // Mark the most recent pending command as confirmed
+      // Mark the most recent unconfirmed command as confirmed (pending or sent)
       await db.query(
         `UPDATE command_logs SET status = 'confirmed', acknowledged_at = CURRENT_TIMESTAMP
          WHERE id = (
            SELECT id FROM command_logs
-           WHERE device_id = 1 AND status = 'pending'
+           WHERE device_id = 1 AND status IN ('pending', 'sent')
            ORDER BY sent_at DESC LIMIT 1
          )`
       );
@@ -228,14 +228,31 @@ export class MQTTService {
   async createAlert(deviceId, type, value, threshold) {
     try {
       const severity = (type.includes('CRITICAL') || type.includes('HIGH') || type.includes('LOW')) ? 'critical' : 'warning';
-      
-      await db.query(
-        `INSERT INTO alerts (id, device_id, type, value, threshold, severity)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [`alert_${Date.now()}`, deviceId, type, value, threshold, severity]
+
+      // Check for an existing unacknowledged alert of the same type — avoid flooding
+      const existing = await db.query(
+        `SELECT id FROM alerts WHERE device_id = ? AND type = ? AND acknowledged = 0 LIMIT 1`,
+        [deviceId, type]
       );
 
-      console.log(`Alert created: ${type} (value: ${value}, threshold: ${threshold})`);
+      if (existing.rows.length > 0) {
+        // Update the existing alert: bump occurrence count and refresh the latest value
+        await db.query(
+          `UPDATE alerts
+           SET value = ?, occurrence_count = occurrence_count + 1, last_seen_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [value, existing.rows[0].id]
+        );
+        console.log(`Alert updated (×${existing.rows[0].occurrence_count + 1}): ${type}`);
+      } else {
+        // No active alert of this type — create a fresh one
+        await db.query(
+          `INSERT INTO alerts (id, device_id, type, value, threshold, severity, occurrence_count, last_seen_at)
+           VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+          [`alert_${Date.now()}`, deviceId, type, value, threshold, severity]
+        );
+        console.log(`Alert created: ${type} (value: ${value}, threshold: ${threshold})`);
+      }
     } catch (error) {
       console.error('Alert creation error:', error);
     }

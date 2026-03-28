@@ -7,6 +7,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
 import { AlertsPanel } from '../components/AlertsPanel';
 import { CommandCenter } from '../components/CommandCenter';
+import { useAuth } from '../hooks/useAuth';
 import { useDeviceData } from '../hooks/useDeviceData';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceStore } from '../store/deviceStore';
@@ -83,6 +84,7 @@ const MiniStat = ({ title, value, unit, icon: Icon, iconCls, accent, subtitle })
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 const Dashboard = () => {
+  const { user }         = useAuth();
   const deviceId         = useDeviceStore((s) => s.deviceId);
   const currentReading   = useDeviceStore((s) => s.currentReading);
   const lastUpdate       = useDeviceStore((s) => s.lastUpdate);
@@ -182,12 +184,12 @@ const Dashboard = () => {
   };
 
   const handleAcknowledgeAll = async () => {
-    const unread = alerts.filter((a) => !a.acknowledged);
-    if (!unread.length) return;
+    if (!alerts.length) return;
+    const acknowledgedBy = user?.full_name || user?.username || null;
     try {
       setAckingAll(true);
-      await Promise.all(unread.map((a) => alertsAPI.acknowledge(a.id)));
-      unread.forEach((a) => acknowledgeAlert(a.id));
+      await alertsAPI.clearUnread(deviceId, acknowledgedBy);
+      alerts.forEach((a) => acknowledgeAlert(a.id));
     } catch (err) {
       console.error('Acknowledge all error:', err);
     } finally {
@@ -205,8 +207,8 @@ const Dashboard = () => {
   const waterTemp     = currentReading?.water_temperature ?? null;
   const tempNormal    = temperature != null && temperature >= 36 && temperature <= 39;
   const humidNormal   = humidity    != null && humidity    >= 40 && humidity    <= 70;
-  const unreadAlerts  = alerts.filter((a) => !a.acknowledged).length;
-  const criticalCount = alerts.filter((a) => !a.acknowledged && a.severity === 'critical').length;
+  const unreadAlerts  = alerts.length;
+  const criticalCount = alerts.filter((a) => a.severity === 'critical').length;
 
   // Incubation day
   let incubationDay = null;
@@ -418,7 +420,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <MdWarning size={18} className={criticalCount > 0 ? 'text-red-500' : 'text-amber-500'} />
-              Recent Alerts
+              Alerts
             </h3>
             {unreadAlerts > 0 && (
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold
@@ -426,7 +428,7 @@ const Dashboard = () => {
                   ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                   : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
                 }`}>
-                {unreadAlerts} unread
+                {unreadAlerts} active
               </span>
             )}
           </div>
@@ -445,7 +447,7 @@ const Dashboard = () => {
             </button>
           )}
         </div>
-        <AlertsPanel />
+        <AlertsPanel showHistoryTab />
       </div>
 
       {/* ── New Batch Modal ───────────────────────────────────────────────── */}

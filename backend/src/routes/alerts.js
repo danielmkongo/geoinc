@@ -3,25 +3,50 @@ import db from '../db/connection.js';
 
 const router = express.Router();
 
-// Get alerts for device
+// Get active (unacknowledged) alerts for a device
 router.get('/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
+    const { limit = 50 } = req.query;
 
     const result = await db.query(
-      `SELECT id, type, value, threshold, severity, acknowledged, acknowledged_at, created_at
+      `SELECT id, type, value, threshold, severity, acknowledged,
+              occurrence_count, last_seen_at, created_at
        FROM alerts
-       WHERE device_id = ?
+       WHERE device_id = ? AND acknowledged = 0
        ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [deviceId, limit, offset]
+       LIMIT ?`,
+      [deviceId, parseInt(limit, 10)]
     );
 
     res.json({ alerts: result.rows });
   } catch (error) {
     console.error('Get alerts error:', error);
     res.status(500).json({ error: 'Failed to fetch alerts' });
+  }
+});
+
+// Get acknowledged alerts history for a device
+router.get('/:deviceId/history', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { limit = 30, offset = 0 } = req.query;
+
+    const result = await db.query(
+      `SELECT id, type, value, threshold, severity,
+              occurrence_count, last_seen_at, created_at,
+              acknowledged_at, acknowledged_by
+       FROM alerts
+       WHERE device_id = ? AND acknowledged = 1
+       ORDER BY acknowledged_at DESC
+       LIMIT ? OFFSET ?`,
+      [deviceId, parseInt(limit, 10), parseInt(offset, 10)]
+    );
+
+    res.json({ alerts: result.rows });
+  } catch (error) {
+    console.error('Get alert history error:', error);
+    res.status(500).json({ error: 'Failed to fetch alert history' });
   }
 });
 
@@ -42,54 +67,49 @@ router.get('/count/unread/:deviceId', async (req, res) => {
   }
 });
 
-// Acknowledge alert
+// Acknowledge a single alert
 router.post('/:alertId/acknowledge', async (req, res) => {
   try {
     const { alertId } = req.params;
+    const { acknowledged_by } = req.body;
 
     await db.query(
       `UPDATE alerts
-       SET acknowledged = 1, acknowledged_at = CURRENT_TIMESTAMP
+       SET acknowledged = 1, acknowledged_at = CURRENT_TIMESTAMP, acknowledged_by = ?
        WHERE id = ?`,
-      [alertId]
+      [acknowledged_by || null, alertId]
     );
 
-    // Fetch the updated alert
-    const result = await db.query(
-      'SELECT * FROM alerts WHERE id = ?',
-      [alertId]
-    );
+    const result = await db.query('SELECT * FROM alerts WHERE id = ?', [alertId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Alert not found' });
     }
 
-    res.json({
-      status: 'success',
-      alert: result.rows[0]
-    });
+    res.json({ status: 'success', alert: result.rows[0] });
   } catch (error) {
     console.error('Acknowledge alert error:', error);
     res.status(500).json({ error: 'Failed to acknowledge alert' });
   }
 });
 
-// Clear unread alerts
+// Acknowledge all alerts for a device
 router.post('/:deviceId/clear-unread', async (req, res) => {
   try {
     const { deviceId } = req.params;
+    const { acknowledged_by } = req.body;
 
     await db.query(
       `UPDATE alerts
-       SET acknowledged = 1, acknowledged_at = CURRENT_TIMESTAMP
+       SET acknowledged = 1, acknowledged_at = CURRENT_TIMESTAMP, acknowledged_by = ?
        WHERE device_id = ? AND acknowledged = 0`,
-      [deviceId]
+      [acknowledged_by || null, deviceId]
     );
 
-    res.json({ status: 'success', message: 'All alerts marked as read' });
+    res.json({ status: 'success', message: 'All alerts acknowledged' });
   } catch (error) {
     console.error('Clear unread alerts error:', error);
-    res.status(500).json({ error: 'Failed to clear alerts' });
+    res.status(500).json({ error: 'Failed to acknowledge alerts' });
   }
 });
 

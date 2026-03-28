@@ -7,6 +7,8 @@ import { useDeviceStore } from '../store/deviceStore';
 import { commandsAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 
+const PENDING_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
 // ── actuator definitions ──────────────────────────────────────────────────────
 
 const ACTUATORS = [
@@ -238,6 +240,41 @@ export const CommandCenter = ({ deviceId = '1' }) => {
   const [overrideEnabled, setOverride] = useState(false);
   const prevRef        = useRef(actuatorStates);
   const feedbackTimer  = useRef(null);
+  const restoredRef    = useRef(false);
+
+  // Restore pending state from server on mount (persists across sessions/accounts)
+  useEffect(() => {
+    if (restoredRef.current) return;
+    // Wait until actuatorStates is populated (at least one key present)
+    if (!Object.keys(actuatorStates).some((k) => actuatorStates[k] !== undefined)) return;
+    restoredRef.current = true;
+
+    commandsAPI.getHistory(deviceId, 5).then((res) => {
+      const recent = (res.data.commands || [])
+        .filter((c) => c.command_type === 'toggle_actuators' && c.status === 'sent')
+        .sort((a, b) => new Date(b.sent_at) - new Date(a.sent_at))[0];
+
+      if (!recent) return;
+      if (Date.now() - new Date(recent.sent_at).getTime() > PENDING_WINDOW_MS) return;
+
+      const payload = typeof recent.command_payload === 'string'
+        ? (() => { try { return JSON.parse(recent.command_payload); } catch { return null; } })()
+        : recent.command_payload;
+      if (!payload) return;
+
+      const restored = {};
+      ACTUATORS.forEach(({ key }) => {
+        if (key in payload && Boolean(payload[key]) !== Boolean(actuatorStates[key])) {
+          restored[key] = true;
+        }
+      });
+
+      if (Object.keys(restored).length > 0) {
+        setPending(restored);
+        setFeedback({ ok: true, msg: 'Awaiting device confirmation...' });
+      }
+    }).catch(() => {});
+  }, [actuatorStates, deviceId]);
 
   // Confirm pending state when WebSocket update arrives
   useEffect(() => {
@@ -361,7 +398,7 @@ export const CommandCenter = ({ deviceId = '1' }) => {
             </div>
           </label>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700/50 rounded-xl text-gray-400 dark:text-slate-500">
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700/50 rounded-xl text-gray-500 dark:text-slate-400">
             <MdLock size={14} />
             <span className="text-[11px] font-mono tracking-wider">VIEW ONLY</span>
           </div>
@@ -400,7 +437,7 @@ export const CommandCenter = ({ deviceId = '1' }) => {
 
       {/* ── Footer hint ───────────────────────────────────────────────────── */}
       <div className="relative px-5 pb-4 flex items-center justify-between">
-        <p className="text-[10px] font-mono text-gray-400 dark:text-slate-500 tracking-wide">
+        <p className="text-[10px] font-mono text-gray-500 dark:text-slate-400 tracking-wide">
           {canControl
             ? overrideEnabled
               ? '⚡ Manual override active — tap cards to toggle'
@@ -408,7 +445,7 @@ export const CommandCenter = ({ deviceId = '1' }) => {
             : '👁 Read-only access'
           }
         </p>
-        <p className="text-[10px] font-mono text-gray-300 dark:text-slate-700 tracking-wider hidden sm:block">
+        <p className="text-[10px] font-mono text-gray-400 dark:text-slate-600 tracking-wider hidden sm:block">
           INCUBATOR CTRL v2
         </p>
       </div>

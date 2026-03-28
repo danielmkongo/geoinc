@@ -21,10 +21,11 @@ const parsePayload = (raw) => {
 };
 
 const statusBadge = (status) => {
-  if (status === 'sent')    return { label: 'Sent',    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/40' };
-  if (status === 'pending') return { label: 'Pending', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/40' };
-  if (status === 'failed')  return { label: 'Failed',  cls: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/40' };
-  return { label: status, cls: 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600' };
+  if (status === 'confirmed') return { label: '✓ Confirmed', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/40' };
+  if (status === 'sent')      return { label: 'Sent',        cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/40' };
+  if (status === 'pending')   return { label: 'Pending',     cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/40' };
+  if (status === 'failed')    return { label: 'Failed',      cls: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/40' };
+  return { label: status,   cls: 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600' };
 };
 
 export const CommandHistory = ({ deviceId = '1', compact = false }) => {
@@ -47,7 +48,7 @@ export const CommandHistory = ({ deviceId = '1', compact = false }) => {
   useEffect(() => { fetchCommands(); }, [deviceId]);
 
   if (loading && commands.length === 0) {
-    return <div className="py-8 text-center text-sm text-gray-400 dark:text-slate-500">Loading...</div>;
+    return <div className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">Loading...</div>;
   }
 
   if (commands.length === 0) {
@@ -112,7 +113,7 @@ export const CommandHistory = ({ deviceId = '1', compact = false }) => {
                   ${compact ? 'p-3' : 'p-3.5'}
                 `}>
                   <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-[11px] font-mono text-gray-400 dark:text-slate-500">
+                    <span className="text-[11px] font-mono text-gray-500 dark:text-slate-400">
                       {formatRelativeTime(cmd.sent_at)}
                     </span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.cls}`}>
@@ -128,13 +129,13 @@ export const CommandHistory = ({ deviceId = '1', compact = false }) => {
                           key={key}
                           className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
                             isOn
-                              ? 'bg-slate-900 dark:bg-slate-700'
-                              : 'bg-gray-50 dark:bg-slate-800/80'
+                              ? 'bg-blue-600'
+                              : 'bg-gray-100 dark:bg-slate-800/80'
                           }`}
                         >
-                          <Icon size={14} className={isOn ? 'text-white' : 'text-gray-300 dark:text-slate-600'} />
+                          <Icon size={14} className={isOn ? 'text-white' : 'text-gray-500 dark:text-slate-500'} />
                           <span className={`text-[9px] font-bold leading-none ${
-                            isOn ? 'text-white' : 'text-gray-300 dark:text-slate-600'
+                            isOn ? 'text-white' : 'text-gray-500 dark:text-slate-500'
                           }`}>
                             {isOn ? 'ON' : 'OFF'}
                           </span>
@@ -142,12 +143,12 @@ export const CommandHistory = ({ deviceId = '1', compact = false }) => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400 dark:text-slate-600 italic">No actuator data</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-500 italic">No actuator data</p>
                   )}
 
                   {/* Summary line */}
                   {items.length > 0 && (
-                    <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-2 font-mono">
+                    <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-2 font-mono">
                       {onItems.length === 0
                         ? 'All actuators off'
                         : onItems.length === items.length
@@ -167,7 +168,7 @@ export const CommandHistory = ({ deviceId = '1', compact = false }) => {
         <button
           onClick={fetchCommands}
           disabled={loading}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
+          className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
         >
           <MdRefresh size={12} className={loading ? 'animate-spin' : ''} />
           Refresh

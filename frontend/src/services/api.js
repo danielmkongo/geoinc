@@ -63,12 +63,13 @@ export const commandsAPI = {
 };
 
 export const alertsAPI = {
-  getAll: (deviceId, limit = 50) =>
-    apiClient.get(`/alerts/${deviceId}?limit=${limit}`),
-  getUnreadCount: (deviceId) =>
-    apiClient.get(`/alerts/count/unread/${deviceId}`),
-  acknowledge: (alertId) => apiClient.post(`/alerts/${alertId}/acknowledge`),
-  clearUnread: (deviceId) => apiClient.post(`/alerts/${deviceId}/clear-unread`),
+  getAll:       (deviceId, limit = 50) => apiClient.get(`/alerts/${deviceId}?limit=${limit}`),
+  getHistory:   (deviceId, limit = 30) => apiClient.get(`/alerts/${deviceId}/history?limit=${limit}`),
+  getUnreadCount: (deviceId)           => apiClient.get(`/alerts/count/unread/${deviceId}`),
+  acknowledge:  (alertId, acknowledgedBy) =>
+    apiClient.post(`/alerts/${alertId}/acknowledge`, { acknowledged_by: acknowledgedBy || null }),
+  clearUnread:  (deviceId, acknowledgedBy) =>
+    apiClient.post(`/alerts/${deviceId}/clear-unread`, { acknowledged_by: acknowledgedBy || null }),
 };
 
 export const exportAPI = {
