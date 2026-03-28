@@ -85,7 +85,11 @@ const StatCard = ({ label, value, unit, color }) => (
 );
 
 const MiniChart = ({ data, dataKey, label, chartLabel, color, unit }) => {
-  const points = [...data].reverse().slice(-60);
+  const all = [...data].reverse(); // oldest → newest
+  const MAX = 300;
+  const points = all.length <= MAX
+    ? all
+    : all.filter((_, i) => i % Math.ceil(all.length / MAX) === 0);
   if (!points.some((r) => r[dataKey] !== null)) return null;
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
