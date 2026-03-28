@@ -57,8 +57,8 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
   const [pending, setPending] = useState({});
   const [feedback, setFeedback] = useState(null);
   const [overrideEnabled, setOverrideEnabled] = useState(false);
-  const prevStatesRef = useRef(actuatorStates);
-  const timeoutsRef = useRef({});
+  const prevStatesRef  = useRef(actuatorStates);
+  const feedbackTimer  = useRef(null);
 
   // When actuatorStates changes via WebSocket, treat it as confirmation for any pending actuator
   useEffect(() => {
@@ -70,9 +70,9 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
         if (currentPending[key] && actuatorStates[key] !== prev[key]) {
           next[key] = false;
           changed = true;
-          clearTimeout(timeoutsRef.current[key]);
+          clearTimeout(feedbackTimer.current);
           setFeedback({ type: 'success', msg: key.replace(/_/g, ' ') + ' confirmed' });
-          setTimeout(() => setFeedback(null), 2500);
+          feedbackTimer.current = setTimeout(() => setFeedback(null), 2500);
         }
       });
       return changed ? next : currentPending;
@@ -80,25 +80,16 @@ export const ActuatorControls = ({ deviceId = '1' }) => {
     prevStatesRef.current = actuatorStates;
   }, [actuatorStates]);
 
-  useEffect(() => {
-    return () => Object.values(timeoutsRef.current).forEach(clearTimeout);
-  }, []);
+  useEffect(() => () => clearTimeout(feedbackTimer.current), []);
 
   const handleToggle = async (key) => {
     if (pending[key]) return;
     try {
       setPending((p) => ({ ...p, [key]: true }));
-      setFeedback(null);
+      setFeedback({ type: 'success', msg: 'Command sent — waiting for device...' });
       const newState = { ...actuatorStates, [key]: !actuatorStates[key] };
       await commandsAPI.send(deviceId, newState);
-      // Don't update UI — wait for device to confirm via device/status MQTT message
-      timeoutsRef.current[key] = setTimeout(() => {
-        setPending((p) => {
-          if (!p[key]) return p;
-          setFeedback({ type: 'error', msg: 'No confirmation received from device' });
-          return { ...p, [key]: false };
-        });
-      }, 5000);
+      // Pending stays until device confirms via WebSocket — no timeout
     } catch (err) {
       setPending((p) => ({ ...p, [key]: false }));
       setFeedback({ type: 'error', msg: err.response?.data?.error || 'Command failed' });
