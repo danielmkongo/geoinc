@@ -4,8 +4,8 @@ import {
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
-import { ActuatorControls } from '../components/ActuatorControls';
 import { AlertsPanel } from '../components/AlertsPanel';
+import { CommandCenter } from '../components/CommandCenter';
 import { useDeviceData } from '../hooks/useDeviceData';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceStore } from '../store/deviceStore';
@@ -37,7 +37,6 @@ const StatCard = ({ title, value, unit, icon: Icon, iconBg, borderClass, trend, 
 const Dashboard = () => {
   const deviceId = useDeviceStore((state) => state.deviceId);
   const currentReading = useDeviceStore((state) => state.currentReading);
-  const actuatorStates = useDeviceStore((state) => state.actuatorStates);
   const lastUpdate = useDeviceStore((state) => state.lastUpdate);
   const serverLastUpdate = useDeviceStore((state) => state.serverLastUpdate);
   const firmwareVersion = useDeviceStore((state) => state.firmwareVersion);
@@ -295,39 +294,12 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 mb-6">
-        <div className="xl:col-span-2">
-          <LiveChart />
-        </div>
-        <div className="flex flex-col gap-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5 flex-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2 text-sm">
-              <span className="w-2 h-2 bg-blue-500 rounded-full" />
-              Actuator Status
-            </h3>
-            <div className="space-y-2.5">
-              {[
-                { key: 'pump', label: 'Pump', icon: '💧', on: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50', dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
-                { key: 'egg_rotation_motor', label: 'Egg Rotation Motor', icon: '🥚', on: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
-                { key: 'exhaust_fan', label: 'Exhaust Fan', icon: '💨', on: 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800/50', dot: 'bg-cyan-500', text: 'text-cyan-600 dark:text-cyan-400' },
-                { key: 'inlet_fan', label: 'Inlet Fan', icon: '🌀', on: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/50', dot: 'bg-sky-500', text: 'text-sky-600 dark:text-sky-400' },
-                { key: 'radiator_fan', label: 'Radiator Fan', icon: '🌡️', on: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50', dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400' },
-              ].map(({ key, label, icon, on, dot, text }) => (
-                <div key={key} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${actuatorStates[key] ? on : 'bg-gray-50 dark:bg-slate-700/40 border-gray-200 dark:border-slate-600/50'}`}>
-                  <div className="flex items-center gap-2.5"><span>{icon}</span><span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span></div>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${actuatorStates[key] ? `${dot} animate-pulse` : 'bg-gray-300 dark:bg-slate-500'}`} />
-                    <span className={`text-xs font-bold ${actuatorStates[key] ? text : 'text-gray-400'}`}>{actuatorStates[key] ? 'ON' : 'OFF'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-sm">Quick Controls</h3>
-            <ActuatorControls />
-          </div>
-        </div>
+      <div className="mb-6">
+        <LiveChart />
+      </div>
+
+      <div className="mb-6">
+        <CommandCenter deviceId={deviceId} />
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5 lg:p-6">
