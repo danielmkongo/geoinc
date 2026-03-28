@@ -79,7 +79,7 @@ router.get('/historical/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
     const { startDate, endDate, limit = 100, offset = 0 } = req.query;
 
-    let query = `SELECT device_id, temperature, humidity, soil_temperature,
+    let query = `SELECT device_id, temperature, humidity, water_temperature,
                         pump_status, egg_rotation_motor_status, exhaust_fan_status,
                         inlet_fan_status, radiator_fan_status, timestamp
                  FROM readings WHERE device_id = ?`;
