@@ -6,7 +6,7 @@ import {
 import { useDeviceStore } from '../store/deviceStore';
 import { formatTime } from '../utils/formatters';
 
-const UNITS = { Temperature: '°C', Humidity: '%', 'Soil Temp': '°C' };
+const UNITS = { Temperature: '°C', Humidity: '%', 'Spring Temp': '°C' };
 
 const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -35,7 +35,7 @@ export const LiveChart = () => {
     displayTime: formatTime(t.timestamp),
     Temperature: t.value,
     Humidity: humidityHistory[i]?.value ?? null,
-    'Soil Temp': soilTemperatureHistory[i]?.value ?? null,
+    'Spring Temp': soilTemperatureHistory[i]?.value ?? null,
   }));
 
   return (
@@ -56,7 +56,7 @@ export const LiveChart = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-teal-500" />
-            <span className="text-gray-600 dark:text-gray-400">Soil Temp</span>
+            <span className="text-gray-600 dark:text-gray-400">Spring Temp</span>
           </div>
         </div>
       </div>
@@ -87,7 +87,7 @@ export const LiveChart = () => {
             <Tooltip content={<ChartTooltip />} />
             <Area type="monotone" dataKey="Temperature" stroke="#f97316" strokeWidth={2.5} fill="url(#tempGrad)" dot={false} activeDot={{ r: 5, fill: '#f97316', strokeWidth: 0 }} />
             <Area type="monotone" dataKey="Humidity" stroke="#3b82f6" strokeWidth={2.5} fill="url(#humidGrad)" dot={false} activeDot={{ r: 5, fill: '#3b82f6', strokeWidth: 0 }} />
-            <Area type="monotone" dataKey="Soil Temp" stroke="#14b8a6" strokeWidth={2.5} fill="url(#soilGrad)" dot={false} activeDot={{ r: 5, fill: '#14b8a6', strokeWidth: 0 }} />
+            <Area type="monotone" dataKey="Spring Temp" stroke="#14b8a6" strokeWidth={2.5} fill="url(#soilGrad)" dot={false} activeDot={{ r: 5, fill: '#14b8a6', strokeWidth: 0 }} />
           </AreaChart>
         </ResponsiveContainer>
       )}
@@ -155,11 +155,11 @@ export const SoilTemperatureChart = () => {
   const soilTemperatureHistory = useDeviceStore((state) => state.soilTemperatureHistory);
   const chartData = soilTemperatureHistory.map((r) => ({
     displayTime: formatTime(r.timestamp),
-    'Soil Temp': r.value,
+    'Spring Temp': r.value,
   }));
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
-      <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Soil Temperature Trend</h3>
+      <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Spring Temperature Trend</h3>
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
           <defs>
@@ -172,7 +172,7 @@ export const SoilTemperatureChart = () => {
           <XAxis dataKey="displayTime" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
           <Tooltip content={<ChartTooltip />} />
-          <Area type="monotone" dataKey="Soil Temp" stroke="#14b8a6" strokeWidth={2.5} fill="url(#soilGrad2)" dot={false} activeDot={{ r: 4, fill: '#14b8a6', strokeWidth: 0 }} />
+          <Area type="monotone" dataKey="Spring Temp" stroke="#14b8a6" strokeWidth={2.5} fill="url(#soilGrad2)" dot={false} activeDot={{ r: 4, fill: '#14b8a6', strokeWidth: 0 }} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
