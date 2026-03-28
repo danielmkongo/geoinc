@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  MdLockOpen, MdLock,
+  MdLockOpen, MdLock, MdSignalWifiOff,
   MdWaterDrop, MdAutorenew, MdSettings, MdHeatPump,
 } from 'react-icons/md';
 import { useDeviceStore } from '../store/deviceStore';
 import { commandsAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { isWithinMinutes } from '../utils/formatters';
 
 const PENDING_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -232,7 +233,12 @@ const ActuatorCard = ({ actuator, isOn, isLoading, canToggle, onToggle, dark }) 
 export const CommandCenter = ({ deviceId = '1' }) => {
   const { user } = useAuth();
   const canControl = user?.role === 'admin' || user?.role === 'operator';
-  const actuatorStates = useDeviceStore((s) => s.actuatorStates);
+  const actuatorStates    = useDeviceStore((s) => s.actuatorStates);
+  const serverLastUpdate  = useDeviceStore((s) => s.serverLastUpdate);
+  const lastUpdate        = useDeviceStore((s) => s.lastUpdate);
+  const manualOverride    = useDeviceStore((s) => s.manualOverride);
+  const setManualOverride = useDeviceStore((s) => s.setManualOverride);
+  const isOnline = isWithinMinutes(serverLastUpdate, 20) || isWithinMinutes(lastUpdate, 20);
   const dark = useDark();
 
   const [pending, setPending]          = useState({});
@@ -241,6 +247,18 @@ export const CommandCenter = ({ deviceId = '1' }) => {
   const prevRef        = useRef(actuatorStates);
   const feedbackTimer  = useRef(null);
   const restoredRef    = useRef(false);
+
+  // Sync override state from store (updated by WebSocket broadcasts and initial fetch)
+  useEffect(() => {
+    setOverride(manualOverride);
+  }, [manualOverride]);
+
+  // Fetch initial override status from server on mount
+  useEffect(() => {
+    commandsAPI.getOverrideStatus(deviceId)
+      .then((res) => setManualOverride(res.data.override))
+      .catch(() => {});
+  }, [deviceId]);
 
   // Restore pending state from server on mount (persists across sessions/accounts)
   useEffect(() => {
@@ -299,7 +317,7 @@ export const CommandCenter = ({ deviceId = '1' }) => {
   useEffect(() => () => clearTimeout(feedbackTimer.current), []);
 
   const handleToggle = async (key) => {
-    if (pending[key] || !overrideEnabled || !canControl) return;
+    if (pending[key] || !overrideEnabled || !canControl || !isOnline) return;
     try {
       setPending((p) => ({ ...p, [key]: true }));
       setFeedback({ ok: true, msg: 'Command sent — waiting for device...' });
@@ -313,14 +331,21 @@ export const CommandCenter = ({ deviceId = '1' }) => {
 
   const handleOverrideChange = async (enabling) => {
     setOverride(enabling);
-    if (!enabling) {
-      try {
+    try {
+      if (enabling) {
+        await commandsAPI.enableOverride(deviceId);
+        setManualOverride(true);
+        setFeedback({ ok: true, msg: 'Manual override active' });
+        setTimeout(() => setFeedback(null), 2500);
+      } else {
         await commandsAPI.disableOverride(deviceId);
+        setManualOverride(false);
         setFeedback({ ok: true, msg: 'Returned to automatic control' });
         setTimeout(() => setFeedback(null), 3000);
-      } catch {
-        setFeedback({ ok: false, msg: 'Failed to disable override' });
       }
+    } catch {
+      setOverride(!enabling); // revert on failure
+      setFeedback({ ok: false, msg: enabling ? 'Failed to enable override' : 'Failed to disable override' });
     }
   };
 
@@ -369,7 +394,12 @@ export const CommandCenter = ({ deviceId = '1' }) => {
         </div>
 
         {/* Override toggle */}
-        {canControl ? (
+        {!isOnline ? (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl text-red-500 dark:text-red-400">
+            <MdSignalWifiOff size={14} />
+            <span className="text-[11px] font-mono font-semibold tracking-wider">OFFLINE</span>
+          </div>
+        ) : canControl ? (
           <label
             className={`
               flex items-center gap-2.5 px-4 py-2 rounded-xl border cursor-pointer
@@ -428,21 +458,36 @@ export const CommandCenter = ({ deviceId = '1' }) => {
             actuator={actuator}
             isOn={!!actuatorStates[actuator.key]}
             isLoading={!!pending[actuator.key]}
-            canToggle={canControl && overrideEnabled && !pending[actuator.key]}
+            canToggle={canControl && overrideEnabled && !pending[actuator.key] && isOnline}
             onToggle={() => handleToggle(actuator.key)}
             dark={dark}
           />
         ))}
+
+        {/* Offline overlay */}
+        {!isOnline && (
+          <div className="absolute inset-0 rounded-xl bg-white/70 dark:bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-10">
+            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800/40">
+              <MdSignalWifiOff size={24} className="text-red-400 dark:text-red-500" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Incubator Offline</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Controls disabled until connection is restored</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Footer hint ───────────────────────────────────────────────────── */}
       <div className="relative px-5 pb-4 flex items-center justify-between">
         <p className="text-[10px] font-mono text-gray-500 dark:text-slate-400 tracking-wide">
-          {canControl
-            ? overrideEnabled
-              ? '⚡ Manual override active — tap cards to toggle'
-              : '🔒 Enable override to take manual control'
-            : '👁 Read-only access'
+          {!isOnline
+            ? '○ Device offline — controls unavailable'
+            : canControl
+              ? overrideEnabled
+                ? '⚡ Manual override active — tap cards to toggle'
+                : '🔒 Enable override to take manual control'
+              : '👁 Read-only access'
           }
         </p>
         <p className="text-[10px] font-mono text-gray-400 dark:text-slate-600 tracking-wider hidden sm:block">

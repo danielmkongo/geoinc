@@ -38,6 +38,8 @@ const migrations = [
   'ALTER TABLE alerts ADD COLUMN occurrence_count INTEGER DEFAULT 1',
   'ALTER TABLE alerts ADD COLUMN last_seen_at DATETIME',
   'ALTER TABLE alerts ADD COLUMN acknowledged_by TEXT',
+  // Manual override persistence
+  'ALTER TABLE devices ADD COLUMN manual_override INTEGER DEFAULT 0',
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* column already exists — skip */ }

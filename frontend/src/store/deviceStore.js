@@ -27,6 +27,7 @@ export const useDeviceStore = create((set) => ({
   lastUpdate: null,
   serverLastUpdate: null, // server-stamped last_update from devices table (UTC-safe)
   firmwareVersion: null,  // firmware version last reported by device via request_commands
+  manualOverride: false,  // persisted across sessions via DB
   isLoadingReadings: false,
   incubationStart: null,
 
@@ -90,6 +91,10 @@ export const useDeviceStore = create((set) => ({
 
   setFirmwareVersion: (version) => {
     set({ firmwareVersion: version });
+  },
+
+  setManualOverride: (value) => {
+    set({ manualOverride: Boolean(value) });
   },
 
   resetActuators: () => {

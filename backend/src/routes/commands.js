@@ -72,11 +72,43 @@ router.post('/send/:deviceId', async (req, res) => {
   }
 });
 
+// Get current override status
+router.get('/override-status/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const result = await db.query(
+      'SELECT manual_override FROM devices WHERE id = ?',
+      [deviceId]
+    );
+    const override = result.rows[0]?.manual_override === 1;
+    res.json({ override });
+  } catch (error) {
+    console.error('Override status error:', error);
+    res.status(500).json({ error: 'Failed to get override status' });
+  }
+});
+
+// Enable manual override
+router.post('/override-on/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    await db.query('UPDATE devices SET manual_override = 1 WHERE id = ?', [deviceId]);
+    const wsManager = req.app.get('wsManager');
+    if (wsManager) wsManager.broadcast({ type: 'override_update', override: true });
+    res.json({ status: 'ok', override: true });
+  } catch (error) {
+    console.error('Override-on error:', error);
+    res.status(500).json({ error: 'Failed to enable override' });
+  }
+});
+
 // Disable manual override — device returns to automatic control immediately
 router.post('/override-off/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const commandId = `cmd_${Date.now()}`;
+
+    await db.query('UPDATE devices SET manual_override = 0 WHERE id = ?', [deviceId]);
 
     await db.query(
       `INSERT INTO command_logs (id, device_id, command_type, command_payload, status, sent_at)
@@ -84,10 +116,13 @@ router.post('/override-off/:deviceId', async (req, res) => {
       [commandId, deviceId, 'override_off', JSON.stringify({ override: false }), 'pending']
     );
 
+    const wsManager = req.app.get('wsManager');
+    if (wsManager) wsManager.broadcast({ type: 'override_update', override: false });
+
     try {
       const { mqttService } = await import('../server.js');
       await mqttService.publishCommand(deviceId, { override: false });
-      res.json({ status: 'sent', commandId });
+      res.json({ status: 'sent', override: false, commandId });
     } catch (mqttError) {
       await db.query(
         'UPDATE command_logs SET status = ?, error_message = ?, acknowledged_at = CURRENT_TIMESTAMP WHERE id = ?',
