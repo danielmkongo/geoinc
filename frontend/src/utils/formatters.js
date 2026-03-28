@@ -1,12 +1,14 @@
 // SQLite CURRENT_TIMESTAMP returns 'YYYY-MM-DD HH:MM:SS' without timezone indicator.
 // JavaScript parses this as local time, but SQLite stores UTC — force UTC interpretation.
-const parseDate = (date) => {
+export const parseDate = (date) => {
   if (!date) return new Date(NaN);
   if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(date)) {
     return new Date(date.replace(' ', 'T') + 'Z');
   }
   return new Date(date);
 };
+
+const TZ = 'Africa/Dar_es_Salaam';
 
 export const formatDate = (date) => {
   if (!date) return 'N/A';
@@ -15,7 +17,8 @@ export const formatDate = (date) => {
     day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: TZ,
   });
 };
 
@@ -24,13 +27,14 @@ export const formatTime = (date) => {
   return parseDate(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
+    timeZone: TZ,
   });
 };
 
 export const formatRelativeTime = (date) => {
   if (!date) return 'Unknown';
-  
+
   const now = new Date();
   const diff = now - parseDate(date);
   const seconds = Math.floor(diff / 1000);
@@ -44,6 +48,12 @@ export const formatRelativeTime = (date) => {
   if (days < 30) return `${days}d ago`;
 
   return formatDate(date);
+};
+
+// Returns true if a SQLite datetime string (UTC) is within `minutes` of now
+export const isWithinMinutes = (date, minutes) => {
+  if (!date) return false;
+  return Date.now() - parseDate(date).getTime() < minutes * 60 * 1000;
 };
 
 export const roundToTwo = (value) => {

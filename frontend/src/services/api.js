@@ -30,12 +30,17 @@ apiClient.interceptors.response.use(
 export const authAPI = {
   login: (username, password) =>
     apiClient.post('/auth/login', { username, password }),
+  logout: () => apiClient.post('/auth/logout'),
 };
 
 export const devicesAPI = {
   getAll: () => apiClient.get('/devices'),
   getById: (deviceId) => apiClient.get(`/devices/${deviceId}`),
   getStatus: (deviceId) => apiClient.get(`/devices/${deviceId}/status`),
+  resetIncubationStart: (deviceId, data) => apiClient.put(`/devices/${deviceId}/incubation-start`, data),
+  getCurrentBatch: (deviceId) => apiClient.get(`/devices/${deviceId}/batch/current`),
+  endBatch: (deviceId, data) => apiClient.post(`/devices/${deviceId}/batch/end`, data),
+  getBatchHistory: (deviceId) => apiClient.get(`/devices/${deviceId}/batches`),
 };
 
 export const readingsAPI = {
@@ -51,6 +56,8 @@ export const readingsAPI = {
 export const commandsAPI = {
   send: (deviceId, command) =>
     apiClient.post(`/commands/send/${deviceId}`, command),
+  disableOverride: (deviceId) =>
+    apiClient.post(`/commands/override-off/${deviceId}`),
   getHistory: (deviceId, limit = 50) =>
     apiClient.get(`/commands/history/${deviceId}?limit=${limit}`),
 };
@@ -103,6 +110,14 @@ export const adminAPI = {
   createDataLogger: (data) => apiClient.post('/admin/data-loggers', data),
   updateDataLogger: (id, data) => apiClient.put(`/admin/data-loggers/${id}`, data),
   deleteDataLogger: (id) => apiClient.delete(`/admin/data-loggers/${id}`),
+  requestDeleteDataLogger: (id) => apiClient.post(`/admin/data-loggers/${id}/request-delete`),
+  // Deletion requests (super_admin)
+  getDeletionRequests: () => apiClient.get('/admin/deletion-requests'),
+  approveDeletion: (id) => apiClient.post(`/admin/deletion-requests/${id}/approve`),
+  rejectDeletion: (id, note) => apiClient.post(`/admin/deletion-requests/${id}/reject`, { note }),
+  // Sessions (super_admin)
+  getSessions: () => apiClient.get('/admin/sessions'),
+  revokeSession: (id) => apiClient.delete(`/admin/sessions/${id}`),
 };
 
 export const dataLoggersAPI = {

@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS readings (
   device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   temperature REAL,
   humidity REAL,
-  soil_temperature REAL,
+  water_temperature REAL,
   pump_status INTEGER,
   egg_rotation_motor_status INTEGER,
   exhaust_fan_status INTEGER,
@@ -126,7 +126,10 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  email TEXT,
+  full_name TEXT,
   role TEXT DEFAULT 'user',
+  is_active INTEGER DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   last_login DATETIME
 );

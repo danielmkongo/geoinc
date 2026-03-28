@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logo from '../assets/logo.png';
 import { Link, useLocation } from 'react-router-dom';
 import {
   MdDashboard, MdSettings, MdHistory, MdClose, MdMenu, MdLogout,
@@ -6,9 +7,8 @@ import {
 } from 'react-icons/md';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { useDeviceStore } from '../store/deviceStore';
+import { authAPI } from '../services/api';
 
-const LIVE_THRESHOLD_MS = 60 * 60 * 1000;
 
 const NavLink = ({ path, label, icon: Icon, desc, active, isAdmin: isAdminItem, onClick }) => (
   <Link
@@ -48,10 +48,8 @@ export const Sidebar = () => {
   const { darkMode, toggleTheme } = useTheme();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const lastUpdate = useDeviceStore((state) => state.lastUpdate);
-  const isLive = lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < LIVE_THRESHOLD_MS;
-
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isSuperAdmin = user?.role === 'super_admin';
   const close = () => setIsOpen(false);
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
@@ -85,18 +83,13 @@ export const Sidebar = () => {
         {/* Logo */}
         <div className="p-5 border-b border-slate-700/50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-green-500/40 flex-shrink-0">
-              <span className="text-xl">🌱</span>
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-white">
+              <img src={logo} alt="TGDC" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-base leading-tight">Joto Ardhi</h1>
+              <h1 className="text-white font-bold text-base leading-tight">TGDC</h1>
               <p className="text-slate-400 text-xs">IoT Monitoring Platform</p>
             </div>
-          </div>
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border
-            ${isLive ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-red-500/10 border-red-500/25 text-red-400'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-            <span>{isLive ? 'Incubator · Live' : 'Incubator · Offline'}</span>
           </div>
         </div>
 
@@ -142,7 +135,7 @@ export const Sidebar = () => {
                 {avatarLetter}
               </div>
               {isAdmin && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-slate-900 flex items-center justify-center">
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 flex items-center justify-center ${isSuperAdmin ? 'bg-purple-500' : 'bg-amber-500'}`}>
                   <MdShield size={7} className="text-slate-900" />
                 </div>
               )}
@@ -150,7 +143,12 @@ export const Sidebar = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
                 <p className="text-white text-sm font-semibold truncate">{displayName}</p>
-                {isAdmin && (
+                {isSuperAdmin && (
+                  <span className="flex-shrink-0 text-xs font-bold text-purple-400 bg-purple-500/15 border border-purple-500/25 px-1.5 py-0.5 rounded-md leading-none">
+                    super admin
+                  </span>
+                )}
+                {!isSuperAdmin && isAdmin && (
                   <span className="flex-shrink-0 text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-md leading-none">
                     admin
                   </span>
@@ -159,7 +157,7 @@ export const Sidebar = () => {
               <p className="text-slate-400 text-xs truncate">{user?.email || user?.username}</p>
             </div>
             <button
-              onClick={logout}
+              onClick={async () => { try { await authAPI.logout(); } catch {} logout(); }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
               title="Logout"
             >

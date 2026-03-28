@@ -47,7 +47,7 @@ router.post('/ingest', async (req, res) => {
 
     res.json({ ok: true });
   } catch (error) {
-    console.error('❌ Ingest error:', error);
+    console.error('Ingest error:', error);
     res.status(500).json({ error: 'Failed to store reading' });
   }
 });
@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
     );
     res.json({ loggers: result.rows });
   } catch (error) {
-    console.error('❌ List loggers error:', error);
+    console.error('List loggers error:', error);
     res.status(500).json({ error: 'Failed to fetch loggers' });
   }
 });
@@ -78,7 +78,7 @@ router.get('/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Logger not found' });
     res.json({ logger: result.rows[0] });
   } catch (error) {
-    console.error('❌ Get logger error:', error);
+    console.error('Get logger error:', error);
     res.status(500).json({ error: 'Failed to fetch logger' });
   }
 });
@@ -92,7 +92,7 @@ router.get('/:id/latest', async (req, res) => {
     );
     res.json({ reading: result.rows[0] ?? null });
   } catch (error) {
-    console.error('❌ Latest reading error:', error);
+    console.error('Latest reading error:', error);
     res.status(500).json({ error: 'Failed to fetch latest reading' });
   }
 });
@@ -111,7 +111,7 @@ router.get('/:id/readings', async (req, res) => {
     const result = await db.query(sql, params);
     res.json({ readings: result.rows });
   } catch (error) {
-    console.error('❌ Readings error:', error);
+    console.error('Readings error:', error);
     res.status(500).json({ error: 'Failed to fetch readings' });
   }
 });
@@ -138,7 +138,7 @@ router.post('/admin/create', async (req, res) => {
     );
     res.status(201).json({ logger: logger.rows[0] });
   } catch (error) {
-    console.error('❌ Create logger error:', error);
+    console.error('Create logger error:', error);
     if (error.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Serial number already registered' });
     res.status(500).json({ error: 'Failed to create logger' });
   }
@@ -162,7 +162,7 @@ router.put('/admin/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Logger not found' });
     res.json({ logger: result.rows[0] });
   } catch (error) {
-    console.error('❌ Update logger error:', error);
+    console.error('Update logger error:', error);
     res.status(500).json({ error: 'Failed to update logger' });
   }
 });
@@ -173,7 +173,7 @@ router.delete('/admin/:id', async (req, res) => {
     await db.query('DELETE FROM data_loggers WHERE id = ?', [req.params.id]);
     res.json({ message: 'Logger deleted' });
   } catch (error) {
-    console.error('❌ Delete logger error:', error);
+    console.error('Delete logger error:', error);
     res.status(500).json({ error: 'Failed to delete logger' });
   }
 });
@@ -186,7 +186,7 @@ router.get('/admin/list', async (req, res) => {
     );
     res.json({ loggers: result.rows });
   } catch (error) {
-    console.error('❌ Admin list loggers error:', error);
+    console.error('Admin list loggers error:', error);
     res.status(500).json({ error: 'Failed to fetch loggers' });
   }
 });

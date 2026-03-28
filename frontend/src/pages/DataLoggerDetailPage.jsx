@@ -1,24 +1,16 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   MdArrowBack, MdRefresh, MdDownload, MdCalendarToday, MdFilterList,
-  MdLocationOn, MdSensors, MdTableChart, MdBarChart,
+  MdLocationOn, MdSensors, MdTableChart, MdBarChart, MdSatellite, MdMap,
 } from 'react-icons/md';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import { GoogleMap, Marker, InfoWindow, useLoadScript } from '@react-google-maps/api';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { dataLoggersAPI } from '../services/api';
-
-// Fix leaflet default marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+import { parseDate, formatRelativeTime } from '../utils/formatters';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,34 +35,27 @@ const getPresetRange = (id) => {
   return null;
 };
 
-const timeAgo = (date) => {
-  if (!date) return 'Never';
-  const diff = Date.now() - new Date(date).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  return Math.floor(diff / 86400000) + 'd ago';
-};
+const TZ = 'Africa/Dar_es_Salaam';
 
 const fmt = (ts) =>
-  new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  parseDate(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: TZ });
 
 const fmtShort = (ts) =>
-  new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  parseDate(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: TZ });
 
 // ── chart configs ─────────────────────────────────────────────────────────────
 
 const CHARTS = [
-  { key: 'temperature',         label: 'Amb Temp (°C)',           color: '#f97316', unit: '°C' },
-  { key: 'humidity',            label: 'Humidity (%)',             color: '#3b82f6', unit: '%' },
-  { key: 'atmospheric_pressure',label: 'Pressure (hPa)',           color: '#8b5cf6', unit: ' hPa' },
-  { key: 'wind_speed',          label: 'Wind Speed (m/s)',         color: '#06b6d4', unit: ' m/s' },
-  { key: 'wind_gust',           label: 'Wind Gust (m/s)',          color: '#0ea5e9', unit: ' m/s' },
-  { key: 'dew_point',           label: 'Dew Point (°C)',           color: '#10b981', unit: '°C' },
-  { key: 'light_intensity',     label: 'Light Intensity (lux)',    color: '#eab308', unit: ' lux' },
-  { key: 'water_temp',          label: 'Spring Temp (°C)',         color: '#14b8a6', unit: '°C' },
-  { key: 'rainfall',            label: 'Rainfall (mm)',            color: '#6366f1', unit: ' mm' },
-  { key: 'battery_voltage',     label: 'Battery Voltage (V)',      color: '#84cc16', unit: ' V' },
+  { key: 'temperature',         label: 'Amb Temp',     chartLabel: 'Amb Temp (°C)',          color: '#f97316', textColor: 'text-orange-500',  unit: '°C' },
+  { key: 'humidity',            label: 'Humidity',     chartLabel: 'Humidity (%)',            color: '#3b82f6', textColor: 'text-blue-500',    unit: '%' },
+  { key: 'atmospheric_pressure',label: 'Pressure',     chartLabel: 'Pressure (hPa)',          color: '#8b5cf6', textColor: 'text-purple-500',  unit: ' hPa' },
+  { key: 'wind_speed',          label: 'Wind Speed',   chartLabel: 'Wind Speed (m/s)',        color: '#06b6d4', textColor: 'text-cyan-500',    unit: ' m/s' },
+  { key: 'wind_gust',           label: 'Wind Gust',    chartLabel: 'Wind Gust (m/s)',         color: '#0ea5e9', textColor: 'text-sky-500',     unit: ' m/s' },
+  { key: 'dew_point',           label: 'Dew Point',    chartLabel: 'Dew Point (°C)',          color: '#10b981', textColor: 'text-emerald-500', unit: '°C' },
+  { key: 'light_intensity',     label: 'Light',        chartLabel: 'Light Intensity (lux)',   color: '#eab308', textColor: 'text-yellow-500',  unit: ' lux' },
+  { key: 'water_temp',          label: 'Spring Temp',  chartLabel: 'Spring Temp (°C)',        color: '#14b8a6', textColor: 'text-teal-500',    unit: '°C' },
+  { key: 'rainfall',            label: 'Rainfall',     chartLabel: 'Rainfall (mm)',           color: '#6366f1', textColor: 'text-indigo-500',  unit: ' mm' },
+  { key: 'battery_voltage',     label: 'Battery',      chartLabel: 'Battery Voltage (V)',     color: '#84cc16', textColor: 'text-lime-500',    unit: ' V' },
 ];
 
 const TABLE_COLS = [
@@ -99,12 +84,12 @@ const StatCard = ({ label, value, unit, color }) => (
   </div>
 );
 
-const MiniChart = ({ data, dataKey, label, color, unit }) => {
+const MiniChart = ({ data, dataKey, label, chartLabel, color, unit }) => {
   const points = [...data].reverse().slice(-60);
   if (!points.some((r) => r[dataKey] !== null)) return null;
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
-      <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-4">{label}</h3>
+      <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-4">{chartLabel}</h3>
       <ResponsiveContainer width="100%" height={160}>
         <LineChart data={points} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
@@ -131,6 +116,10 @@ export const DataLoggerDetailPage = () => {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [mapTypeId, setMapTypeId] = useState('hybrid');
+  const [infoOpen, setInfoOpen] = useState(false);
+  const { isLoaded: mapsLoaded } = useLoadScript({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY });
+  const mapRef = useRef(null);
   const [activePreset, setActivePreset] = useState('7d');
   const [customStart, setCustomStart] = useState(() => toInputValue(new Date(Date.now() - 7 * 86400000)));
   const [customEnd, setCustomEnd] = useState(() => toInputValue(new Date()));
@@ -199,6 +188,25 @@ export const DataLoggerDetailPage = () => {
 
   const hasLocation = logger?.latitude && logger?.longitude;
 
+  // Sort parameters: those with values first, nulls after
+  const sortedCharts = useMemo(() => {
+    if (!latest) return CHARTS;
+    return [...CHARTS].sort((a, b) => {
+      const aHas = latest[a.key] !== null && latest[a.key] !== undefined;
+      const bHas = latest[b.key] !== null && latest[b.key] !== undefined;
+      return aHas === bHas ? 0 : aHas ? -1 : 1;
+    });
+  }, [latest]);
+
+  const sortedTableCols = useMemo(() => {
+    if (readings.length === 0) return TABLE_COLS;
+    return [TABLE_COLS[0], ...[...TABLE_COLS.slice(1)].sort((a, b) => {
+      const aHas = readings.some((r) => r[a.key] !== null && r[a.key] !== undefined);
+      const bHas = readings.some((r) => r[b.key] !== null && r[b.key] !== undefined);
+      return aHas === bHas ? 0 : aHas ? -1 : 1;
+    })];
+  }, [readings]);
+
   if (loading && !logger) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center pt-16 lg:pt-0">
@@ -248,7 +256,7 @@ export const DataLoggerDetailPage = () => {
       {latest && (
         <div className="flex items-center gap-3 mb-6 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30 rounded-xl text-sm text-emerald-700 dark:text-emerald-400">
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          Last data received {timeAgo(latest.timestamp)}
+          Last data received {formatRelativeTime(latest.timestamp)}
           {logger?.description && <span className="text-gray-400 dark:text-gray-500 ml-2">· {logger.description}</span>}
         </div>
       )}
@@ -322,14 +330,12 @@ export const DataLoggerDetailPage = () => {
       {/* ── OVERVIEW TAB ──────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <div>
-          {/* Latest stats */}
+          {/* Latest stats — parameters with values first, then nulls */}
           {latest && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-              <StatCard label="Amb Temp" value={latest.temperature} unit="°C" color="text-orange-500" />
-              <StatCard label="Humidity" value={latest.humidity} unit="%" color="text-blue-500" />
-              <StatCard label="Pressure" value={latest.atmospheric_pressure} unit=" hPa" color="text-purple-500" />
-              <StatCard label="Wind Speed" value={latest.wind_speed} unit=" m/s" color="text-cyan-500" />
-              <StatCard label="Rainfall" value={latest.rainfall} unit=" mm" color="text-indigo-500" />
+              {sortedCharts.map(({ key, label, textColor, unit }) => (
+                <StatCard key={key} label={label} value={latest[key]} unit={unit} color={textColor} />
+              ))}
             </div>
           )}
 
@@ -345,8 +351,8 @@ export const DataLoggerDetailPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {CHARTS.map(({ key, label, color, unit }) => (
-                <MiniChart key={key} data={readings} dataKey={key} label={label} color={color} unit={unit} />
+              {CHARTS.map(({ key, chartLabel, color, unit }) => (
+                <MiniChart key={key} data={readings} dataKey={key} chartLabel={chartLabel} color={color} unit={unit} />
               ))}
             </div>
           )}
@@ -367,7 +373,7 @@ export const DataLoggerDetailPage = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
-                    {TABLE_COLS.map(({ key, label }) => (
+                    {sortedTableCols.map(({ key, label }) => (
                       <th key={key} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
                         {label}
                       </th>
@@ -380,7 +386,7 @@ export const DataLoggerDetailPage = () => {
                       <td className="px-4 py-2.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {fmtShort(r.timestamp)}
                       </td>
-                      {TABLE_COLS.slice(1).map(({ key }) => (
+                      {sortedTableCols.slice(1).map(({ key }) => (
                         <td key={key} className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs whitespace-nowrap">
                           {r[key] !== null && r[key] !== undefined ? Number(r[key]).toFixed(2) : '—'}
                         </td>
@@ -409,31 +415,56 @@ export const DataLoggerDetailPage = () => {
               {parseFloat(logger.latitude).toFixed(6)}, {parseFloat(logger.longitude).toFixed(6)}
             </span>
           </div>
-          <MapContainer
-            center={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}
-            zoom={13}
-            style={{ height: '420px', width: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={[parseFloat(logger.latitude), parseFloat(logger.longitude)]}>
-              <Popup>
-                <strong>{logger.name}</strong>
-                {logger.serial_number && <><br /><code>{logger.serial_number}</code></>}
-                {logger.description && <><br />{logger.description}</>}
-                {latest && (
-                  <>
-                    <br /><br />
-                    <b>Amb Temp:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
-                    <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
-                    <b>Last seen:</b> {timeAgo(latest.timestamp)}
-                  </>
+          <div className="relative" style={{ height: '420px' }}>
+            {!mapsLoaded ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="w-7 h-7 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <GoogleMap
+                mapContainerStyle={{ height: '420px', width: '100%' }}
+                center={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
+                zoom={15}
+                options={{ disableDefaultUI: true, zoomControl: true, keyboardShortcuts: false, mapTypeId }}
+                onLoad={(map) => { mapRef.current = map; map.setMapTypeId(mapTypeId); }}
+              >
+                <Marker
+                  position={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
+                  onClick={() => setInfoOpen(true)}
+                />
+                {infoOpen && (
+                  <InfoWindow
+                    position={{ lat: parseFloat(logger.latitude), lng: parseFloat(logger.longitude) }}
+                    onCloseClick={() => setInfoOpen(false)}
+                  >
+                    <div style={{ fontSize: 13 }}>
+                      <strong>{logger.name}</strong>
+                      {logger.serial_number && <><br /><code>{logger.serial_number}</code></>}
+                      {logger.description && <><br />{logger.description}</>}
+                      {latest && (
+                        <>
+                          <br /><br />
+                          <b>Amb Temp:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
+                          <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
+                          <b>Last seen:</b> {formatRelativeTime(latest.timestamp)}
+                        </>
+                      )}
+                    </div>
+                  </InfoWindow>
                 )}
-              </Popup>
-            </Marker>
-          </MapContainer>
+              </GoogleMap>
+            )}
+            <button
+              onClick={() => {
+                const next = mapTypeId === 'hybrid' ? 'roadmap' : 'hybrid';
+                setMapTypeId(next);
+                mapRef.current?.setMapTypeId(next);
+              }}
+              className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {mapTypeId === 'hybrid' ? <><MdMap size={15} /> Street</> : <><MdSatellite size={15} /> Satellite</>}
+            </button>
+          </div>
         </div>
       )}
     </div>

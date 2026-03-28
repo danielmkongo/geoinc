@@ -13,8 +13,10 @@ export const useWebSocket = () => {
   const updateReading = useDeviceStore((state) => state.updateReading);
   const addTemperatureReading = useDeviceStore((state) => state.addTemperatureReading);
   const addHumidityReading = useDeviceStore((state) => state.addHumidityReading);
-  const addSoilTemperatureReading = useDeviceStore((state) => state.addSoilTemperatureReading);
+  const addWaterTemperatureReading = useDeviceStore((state) => state.addWaterTemperatureReading);
   const updateActuatorState = useDeviceStore((state) => state.updateActuatorState);
+  const setServerLastUpdate = useDeviceStore((state) => state.setServerLastUpdate);
+  const setFirmwareVersion = useDeviceStore((state) => state.setFirmwareVersion);
   const addAlert = useAlertStore((state) => state.addAlert);
 
   useEffect(() => {
@@ -25,14 +27,15 @@ export const useWebSocket = () => {
 
       switch (type) {
         case 'sensor_update':
+          setServerLastUpdate(new Date().toISOString());
           if (data.temperature !== null) {
             addTemperatureReading(data.temperature, new Date());
           }
           if (data.humidity !== null) {
             addHumidityReading(data.humidity, new Date());
           }
-          if (data.soil_temperature != null) {
-            addSoilTemperatureReading(data.soil_temperature, new Date());
+          if (data.water_temperature != null) {
+            addWaterTemperatureReading(data.water_temperature, new Date());
           }
           updateReading({
             ...data,
@@ -42,6 +45,10 @@ export const useWebSocket = () => {
 
         case 'actuator_update':
           updateActuatorState(data);
+          break;
+
+        case 'device_version':
+          setFirmwareVersion(message.version);
           break;
 
         case 'alert':
@@ -56,8 +63,12 @@ export const useWebSocket = () => {
           });
           break;
 
+        case 'deletion_request_update':
+          window.dispatchEvent(new CustomEvent('deletion_request_update'));
+          break;
+
         case 'connected':
-          console.log('✅ WebSocket connected');
+          console.log('WebSocket connected');
           setWSConnected(true);
           break;
 
@@ -67,12 +78,12 @@ export const useWebSocket = () => {
     };
 
     const handleError = (error) => {
-      console.error('❌ WebSocket error:', error);
+      console.error('WebSocket error:', error);
       setConnectionError(error.message);
     };
 
     const handleClose = () => {
-      console.log('🔌 WebSocket closed');
+      console.log('WebSocket closed');
       setWSConnected(false);
     };
 
@@ -85,7 +96,7 @@ export const useWebSocket = () => {
         setWSConnected(true);
       })
       .catch((error) => {
-        console.error('❌ Failed to connect WebSocket:', error);
+        console.error('Failed to connect WebSocket:', error);
         setConnectionError(error.message);
       });
 
@@ -99,8 +110,10 @@ export const useWebSocket = () => {
     updateReading,
     addTemperatureReading,
     addHumidityReading,
-    addSoilTemperatureReading,
+    addWaterTemperatureReading,
     updateActuatorState,
+    setServerLastUpdate,
+    setFirmwareVersion,
     addAlert,
     setWSConnected,
     setConnectionError,

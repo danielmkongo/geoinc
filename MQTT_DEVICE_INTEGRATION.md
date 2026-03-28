@@ -21,16 +21,17 @@ This document describes the MQTT protocol contract between the Incubator device 
 
 ## Topic Overview
 
-| Direction         | Topic                                      | Purpose                          |
-|-------------------|--------------------------------------------|----------------------------------|
-| Device → Platform | `incubator/device1/telemetry/data`          | Sensor readings                        |
-| Device → Platform | `incubator/device1/device/status`           | Current actuator states                |
-| Device → Platform | `incubator/device1/device/online`           | Online/heartbeat signal                |
-| Device → Platform | `incubator/device1/device/request_commands` | Request last command after reconnect   |
-| Device → Platform | `incubator/device1/system/alerts`           | Device-generated alerts                |
-| Device → Platform | `incubator/device1/system/errors`           | Error messages                         |
-| Device → Platform | `incubator/device1/actuator/feedback`       | Confirmation after command             |
-| Platform → Device | `incubator/device1/actuator/commands`       | Commands to control actuators          |
+| Direction         | Topic                                        | Purpose                                |
+|-------------------|----------------------------------------------|----------------------------------------|
+| Device → Platform | `incubator/device1/telemetry/data`           | Sensor readings                        |
+| Device → Platform | `incubator/device1/device/status`            | Current actuator states                |
+| Device → Platform | `incubator/device1/device/online`            | Online/heartbeat signal                |
+| Device → Platform | `incubator/device1/device/request_commands`  | Request last command after reconnect   |
+| Device → Platform | `incubator/device1/system/alerts`            | Device-generated alerts                |
+| Device → Platform | `incubator/device1/system/errors`            | Error messages                         |
+| Device → Platform | `incubator/device1/actuator/feedback`        | Confirmation after command             |
+| Platform → Device | `incubator/device1/actuator/commands`        | Commands to control actuators          |
+| Platform → Device | `incubator/device1/device/reset_incubation`  | Reset incubation start date on device  |
 
 ---
 
@@ -46,7 +47,7 @@ Publish sensor readings on a regular interval (recommended: every 5–10 seconds
 {
   "temperature": 37.5,
   "humidity": 55.2,
-  "soil_temperature": 28.3,
+  "water_temperature": 28.3,
   "pump_status": 1,
   "egg_rotation_motor_status": 1,
   "exhaust_fan_status": 0,
@@ -60,7 +61,7 @@ Publish sensor readings on a regular interval (recommended: every 5–10 seconds
 |------------------------------|---------|------------------------------------------|
 | `temperature`                | float   | Air temperature in °C                    |
 | `humidity`                   | float   | Relative humidity in %                   |
-| `soil_temperature`           | float   | Soil / water temperature in °C (send `null` if sensor unavailable) |
+| `water_temperature`           | float   | Fluid / water temperature in °C (send `null` if sensor unavailable) |
 | `pump_status`                | int     | `1` = ON, `0` = OFF                      |
 | `egg_rotation_motor_status`  | int     | `1` = ON, `0` = OFF                      |
 | `exhaust_fan_status`         | int     | `1` = ON, `0` = OFF                      |
@@ -228,11 +229,11 @@ Optional — publish after executing a command as explicit acknowledgement. The 
 ## Topic: Platform → Device (Subscribe)
 
 ### `incubator/device1/actuator/commands`
-The platform publishes commands here when a user toggles an actuator on the dashboard.
+The platform publishes commands here when a user toggles an actuator on the dashboard, or when the user disables Manual Override to return the device to automatic control.
 
 **QoS:** 1 (guaranteed delivery)
 
-**Payload:**
+#### Actuator command payload
 ```json
 {
   "pump": true,
@@ -253,7 +254,25 @@ The platform publishes commands here when a user toggles an actuator on the dash
 
 > The payload always contains **all five actuator states**, not just the changed one. Apply all values on receipt.
 
+#### Override-off payload
+When the user turns off Manual Override on the dashboard, the platform sends:
+```json
+{
+  "override": false
+}
+```
+
+| Field      | Type    | Description                                              |
+|------------|---------|----------------------------------------------------------|
+| `override` | boolean | `false` = immediately clear override mode and return to automatic control |
+
 **Device must:**
+- Check for `override: false` **before** checking for actuator keys
+- Clear `overrideMode` immediately when received
+- Resume the automatic PID/humidity control loop on the next sensor cycle
+- No `device/status` reply is required for override-off commands
+
+**Device must (for actuator commands):**
 1. Receive the command
 2. Apply the requested states to the hardware
 3. Publish current states to `incubator/device1/device/status` to confirm execution
@@ -277,10 +296,20 @@ Commands remain `pending` until the device publishes `device/status`. If the dev
 Platform                          Device
    |                                 |
    |-- actuator/commands ----------->|  (pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan)
-   |                                 |  [device applies the command]
+   |                                 |  [device applies the command, sets overrideMode = true]
    |<-- device/status ---------------|  (pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan)
    |                                 |
    [UI toggle updates]
+```
+
+**Override-off flow:**
+```
+Platform                          Device
+   |                                 |
+   [User turns off Manual Override]  |
+   |-- actuator/commands ----------->|  { "override": false }
+   |                                 |  [device clears overrideMode immediately]
+   |                                 |  [automatic control resumes next sensor cycle]
 ```
 
 If the device does not publish `device/status` within 5 seconds, the platform times out and shows an error.
@@ -302,22 +331,70 @@ Platform                          Device
 
 ---
 
+---
+
+## Topic: Platform → Device — Incubation Reset
+
+### `incubator/device1/device/reset_incubation`
+Published by the platform when a user presses **New Batch** on the dashboard. The platform sets the incubation start time server-side and sends the exact timestamp to the device so both sides stay in sync.
+
+**QoS:** 1
+
+**Payload:**
+```json
+{ "reset": true, "start_ts": 1741823400 }
+```
+
+| Field      | Type    | Description                                                                  |
+|------------|---------|------------------------------------------------------------------------------|
+| `reset`    | boolean | Always `true`                                                                |
+| `start_ts` | int     | Unix epoch seconds (UTC) — the new incubation start as recorded by the server |
+
+**Device must:**
+1. Receive the message
+2. Write `start_ts` to `/start_time.bin` (or equivalent LittleFS file) — **use this value, not the current device clock**, so the platform and device agree on day 0
+3. Use this timestamp as day 0 for all subsequent incubation-day calculations
+
+> If the device is offline when the user presses **New Batch**, it will receive this message on next reconnect (QoS 1). Always persist `start_ts` to storage immediately on receipt.
+
+---
+
+## Timestamps and Timezone
+
+All `timestamp` values in telemetry payloads must be **Unix epoch seconds in UTC**. Example:
+
+```cpp
+// Arduino / ESP32 (NTP synced)
+time_t now;
+time(&now);                 // seconds since 1970-01-01 00:00:00 UTC
+payload["timestamp"] = now;
+```
+
+The platform displays all times in **East Africa Time (EAT, UTC+3)** — Tanzania / Nairobi timezone. No conversion is needed on the device side; just send UTC epoch seconds.
+
+---
+
 ## Recommended Device Loop
 
 ```
 on boot / reconnect:
   connect to MQTT broker
   subscribe to: incubator/device1/actuator/commands
+  subscribe to: incubator/device1/device/reset_incubation
   publish to:   incubator/device1/device/online           { online: true }
   publish to:   incubator/device1/device/request_commands { reason: "reconnect", fv: FIRMWARE_VERSION }
   // platform will respond with last command on actuator/commands
 
 every 5-10 seconds:
   read sensors
-  publish to: incubator/device1/telemetry/data  { temperature, humidity, ..., timestamp }
+  publish to: incubator/device1/telemetry/data  { temperature, humidity, ..., timestamp (UTC epoch seconds) }
 
 on message received on actuator/commands:
   parse payload
   apply pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan states
   publish to: incubator/device1/device/status  { pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan }
+
+on message received on device/reset_incubation:
+  delete /start_time.bin (or equivalent LittleFS file)
+  record current time as new incubation start
 ```

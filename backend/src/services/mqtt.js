@@ -34,7 +34,7 @@ export class MQTTService {
       this.client = mqtt.connect(brokerUrl, options);
 
       this.client.on('connect', () => {
-        console.log('✅ MQTT Connected');
+        console.log('MQTT Connected');
         this.isConnected = true;
         this.lastPing = new Date();
         
@@ -48,12 +48,12 @@ export class MQTTService {
       });
 
       this.client.on('error', (error) => {
-        console.error('❌ MQTT Error:', error);
+        console.error('MQTT Error:', error);
         this.isConnected = false;
       });
 
       this.client.on('disconnect', () => {
-        console.log('🔌 MQTT Disconnected');
+        console.log('MQTT Disconnected');
         this.isConnected = false;
       });
 
@@ -74,9 +74,9 @@ export class MQTTService {
       `${deviceTopic}/device/request_commands`
     ], (error) => {
       if (error) {
-        console.error('❌ Subscription error:', error);
+        console.error('Subscription error:', error);
       } else {
-        console.log('✅ Subscribed to device topics');
+        console.log('Subscribed to device topics');
       }
     });
   }
@@ -84,7 +84,12 @@ export class MQTTService {
   async handleMessage(topic, message) {
     try {
       const data = JSON.parse(message);
-      
+
+      // Any message from the device means it's online — update last_update
+      await db.query(
+        'UPDATE devices SET last_update = CURRENT_TIMESTAMP, online = 1 WHERE id = 1'
+      );
+
       if (topic.includes('telemetry/data')) {
         await this.handleSensorData(data);
       } else if (topic.includes('device/status')) {
@@ -105,24 +110,24 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Message handling error:', error);
+      console.error('Message handling error:', error);
     }
   }
 
   async handleSensorData(data) {
     try {
       // Insert reading into database
-      const { temperature, humidity, soil_temperature,
+      const { temperature, humidity, water_temperature,
               pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
               timestamp } = data;
 
       await db.query(
         `INSERT OR IGNORE INTO readings
-           (device_id, temperature, humidity, soil_temperature,
+           (device_id, temperature, humidity, water_temperature,
             pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
             timestamp)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [1, temperature, humidity, soil_temperature ?? null,
+        [1, temperature, humidity, water_temperature ?? null,
          pump_status ?? null, egg_rotation_motor_status ?? null,
          exhaust_fan_status ?? null, inlet_fan_status ?? null, radiator_fan_status ?? null,
          new Date(timestamp * 1000).toISOString()]
@@ -147,20 +152,20 @@ export class MQTTService {
         }
       }
 
-      console.log('✅ Sensor data stored:', { temperature, humidity, soil_temperature });
+      console.log('Sensor data stored:', { temperature, humidity, water_temperature });
 
       // Broadcast to WebSocket clients
       if (this.wsManager) {
         this.wsManager.broadcast({
           type: 'sensor_update',
           deviceId: 1,
-          data: { temperature, humidity, soil_temperature,
+          data: { temperature, humidity, water_temperature,
                   pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status },
           timestamp: new Date()
         });
       }
     } catch (error) {
-      console.error('❌ Sensor data handling error:', error);
+      console.error('Sensor data handling error:', error);
     }
   }
 
@@ -170,9 +175,9 @@ export class MQTTService {
       const { pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan } = data;
 
       await db.query(
-        `INSERT INTO actuator_states (device_id, pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan, updated_at)
+        `INSERT OR REPLACE INTO actuator_states (device_id, pump, egg_rotation_motor, exhaust_fan, inlet_fan, radiator_fan, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [1, pump || false, egg_rotation_motor || false, exhaust_fan || false, inlet_fan || false, radiator_fan || false]
+        [1, pump ? 1 : 0, egg_rotation_motor ? 1 : 0, exhaust_fan ? 1 : 0, inlet_fan ? 1 : 0, radiator_fan ? 1 : 0]
       );
 
       // Mark the most recent pending command as confirmed
@@ -185,7 +190,7 @@ export class MQTTService {
          )`
       );
 
-      console.log('✅ Device status updated');
+      console.log('Device status updated');
 
       // Broadcast to WebSocket clients
       if (this.wsManager) {
@@ -197,7 +202,7 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Device status handling error:', error);
+      console.error('Device status handling error:', error);
     }
   }
 
@@ -216,7 +221,7 @@ export class MQTTService {
         });
       }
     } catch (error) {
-      console.error('❌ Alert handling error:', error);
+      console.error('Alert handling error:', error);
     }
   }
 
@@ -230,9 +235,9 @@ export class MQTTService {
         [`alert_${Date.now()}`, deviceId, type, value, threshold, severity]
       );
 
-      console.log(`⚠️  Alert created: ${type} (value: ${value}, threshold: ${threshold})`);
+      console.log(`Alert created: ${type} (value: ${value}, threshold: ${threshold})`);
     } catch (error) {
-      console.error('❌ Alert creation error:', error);
+      console.error('Alert creation error:', error);
     }
   }
 
@@ -254,6 +259,14 @@ export class MQTTService {
   async handleCommandRequest(data) {
     try {
       const deviceVersion = data?.fv ?? null; // firmware version reported by device
+
+      // Persist the device's reported firmware version and broadcast to UI
+      if (deviceVersion) {
+        await db.query('UPDATE devices SET firmware_version = ? WHERE id = 1', [String(deviceVersion)]);
+        if (this.wsManager) {
+          this.wsManager.broadcast({ type: 'device_version', version: String(deviceVersion) });
+        }
+      }
 
       const [cmdResult, otaResult] = await Promise.all([
         db.query(
@@ -280,7 +293,7 @@ export class MQTTService {
       );
 
       if (!hasCommand && !shouldSendFirmware) {
-        console.log('ℹ️  Device requested commands but nothing to send');
+        console.log('Device requested commands but nothing to send');
         return;
       }
 
@@ -295,20 +308,40 @@ export class MQTTService {
           download_url: fw.download_url,
           file_size: fw.file_size
         };
-        console.log(`ℹ️  Sending OTA ${fw.version} (device has ${deviceVersion ?? 'unknown'})`);
+        console.log(`Sending OTA ${fw.version} (device has ${deviceVersion ?? 'unknown'})`);
       }
 
       const commandTopic = `${process.env.DEVICE_TOPIC_PREFIX}/actuator/commands`;
       this.client.publish(commandTopic, JSON.stringify(payload), { qos: 1 }, (error) => {
         if (error) {
-          console.error('❌ Failed to re-publish pending command:', error);
+          console.error('Failed to re-publish pending command:', error);
         } else {
-          console.log('✅ Re-published pending command to offline device:', payload);
+          console.log('Re-published pending command to offline device:', payload);
         }
       });
     } catch (error) {
-      console.error('❌ handleCommandRequest error:', error);
+      console.error('handleCommandRequest error:', error);
     }
+  }
+
+  publishIncubationReset(startTimestamp) {
+    if (!this.client || !this.isConnected) {
+      return Promise.reject(new Error('MQTT broker not connected'));
+    }
+    const topic = `${process.env.DEVICE_TOPIC_PREFIX}/device/reset_incubation`;
+    const payload = JSON.stringify({
+      reset: true,
+      start_ts: startTimestamp, // Unix epoch seconds (UTC) — device writes this to LittleFS
+    });
+    return new Promise((resolve, reject) => {
+      this.client.publish(topic, payload, { qos: 1 }, (error) => {
+        if (error) reject(error);
+        else {
+          console.log('Incubation reset published to device, start_ts:', startTimestamp);
+          resolve();
+        }
+      });
+    });
   }
 
   publishCommand(deviceId, command) {
@@ -322,10 +355,10 @@ export class MQTTService {
     return new Promise((resolve, reject) => {
       this.client.publish(topic, payload, { qos: 1 }, (error) => {
         if (error) {
-          console.error('❌ Publish error:', error);
+          console.error('Publish error:', error);
           reject(error);
         } else {
-          console.log('✅ Command published:', command);
+          console.log('Command published:', command);
           resolve();
         }
       });
@@ -336,7 +369,7 @@ export class MQTTService {
     return new Promise((resolve) => {
       if (this.client) {
         this.client.end(false, () => {
-          console.log('🔌 MQTT Disconnected');
+          console.log('MQTT Disconnected');
           this.isConnected = false;
           resolve();
         });

@@ -20,7 +20,7 @@ router.get('/:deviceId', async (req, res) => {
 
     res.json({ alerts: result.rows });
   } catch (error) {
-    console.error('❌ Get alerts error:', error);
+    console.error('Get alerts error:', error);
     res.status(500).json({ error: 'Failed to fetch alerts' });
   }
 });
@@ -37,7 +37,7 @@ router.get('/count/unread/:deviceId', async (req, res) => {
 
     res.json({ unreadCount: parseInt(result.rows[0].count) });
   } catch (error) {
-    console.error('❌ Get unread alerts count error:', error);
+    console.error('Get unread alerts count error:', error);
     res.status(500).json({ error: 'Failed to fetch alert count' });
   }
 });
@@ -69,7 +69,7 @@ router.post('/:alertId/acknowledge', async (req, res) => {
       alert: result.rows[0]
     });
   } catch (error) {
-    console.error('❌ Acknowledge alert error:', error);
+    console.error('Acknowledge alert error:', error);
     res.status(500).json({ error: 'Failed to acknowledge alert' });
   }
 });
@@ -88,7 +88,7 @@ router.post('/:deviceId/clear-unread', async (req, res) => {
 
     res.json({ status: 'success', message: 'All alerts marked as read' });
   } catch (error) {
-    console.error('❌ Clear unread alerts error:', error);
+    console.error('Clear unread alerts error:', error);
     res.status(500).json({ error: 'Failed to clear alerts' });
   }
 });

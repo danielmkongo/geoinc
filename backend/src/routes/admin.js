@@ -6,6 +6,15 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import db from '../db/connection.js';
+import { sendInvitationEmail } from '../services/email.js';
+
+// Middleware: only super_admin can proceed
+const superAdminOnly = (req, res, next) => {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Super admin access required' });
+  }
+  next();
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +44,7 @@ router.get('/users', async (req, res) => {
     );
     res.json({ users: result.rows });
   } catch (error) {
-    console.error('❌ List users error:', error);
+    console.error('List users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -64,9 +73,20 @@ router.post('/users', async (req, res) => {
       'SELECT id, username, email, full_name, role, is_active, created_at FROM users WHERE rowid = ?',
       [result.rows[0].lastInsertRowid]
     );
+
+    // Send invitation email if the user has an email address
+    if (email) {
+      sendInvitationEmail({
+        to: email,
+        username,
+        password,
+        fullName: full_name,
+      }).catch((err) => console.error('Failed to send invitation email:', err));
+    }
+
     res.status(201).json({ user: user.rows[0] });
   } catch (error) {
-    console.error('❌ Create user error:', error);
+    console.error('Create user error:', error);
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -106,7 +126,7 @@ router.put('/users/:id', async (req, res) => {
     if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json({ user: user.rows[0] });
   } catch (error) {
-    console.error('❌ Update user error:', error);
+    console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -121,7 +141,7 @@ router.delete('/users/:id', async (req, res) => {
     await db.query('DELETE FROM users WHERE id = ?', [id]);
     res.json({ message: 'User deleted' });
   } catch (error) {
-    console.error('❌ Delete user error:', error);
+    console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
@@ -138,7 +158,7 @@ router.post('/users/:id/reset-password', async (req, res) => {
     await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, id]);
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    console.error('❌ Reset password error:', error);
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -178,7 +198,7 @@ router.post('/devices', async (req, res) => {
     const device = await db.query('SELECT * FROM devices WHERE id = ?', [deviceId]);
     res.status(201).json({ device: device.rows[0] });
   } catch (error) {
-    console.error('❌ Create device error:', error);
+    console.error('Create device error:', error);
     res.status(500).json({ error: 'Failed to create device' });
   }
 });
@@ -205,7 +225,7 @@ router.put('/devices/:id', async (req, res) => {
     if (device.rows.length === 0) return res.status(404).json({ error: 'Device not found' });
     res.json({ device: device.rows[0] });
   } catch (error) {
-    console.error('❌ Update device error:', error);
+    console.error('Update device error:', error);
     res.status(500).json({ error: 'Failed to update device' });
   }
 });
@@ -217,7 +237,7 @@ router.delete('/devices/:id', async (req, res) => {
     await db.query('DELETE FROM devices WHERE id = ?', [id]);
     res.json({ message: 'Device deleted' });
   } catch (error) {
-    console.error('❌ Delete device error:', error);
+    console.error('Delete device error:', error);
     res.status(500).json({ error: 'Failed to delete device' });
   }
 });
@@ -232,7 +252,7 @@ router.get('/firmware', async (req, res) => {
     );
     res.json({ firmware: result.rows });
   } catch (error) {
-    console.error('❌ List firmware error:', error);
+    console.error('List firmware error:', error);
     res.status(500).json({ error: 'Failed to fetch firmware list' });
   }
 });
@@ -262,7 +282,7 @@ router.post('/firmware', uploadFirmware.single('file'), async (req, res) => {
     );
     res.status(201).json({ firmware: entry.rows[0] });
   } catch (error) {
-    console.error('❌ Create firmware error:', error);
+    console.error('Create firmware error:', error);
     res.status(500).json({ error: 'Failed to create firmware entry' });
   }
 });
@@ -274,7 +294,7 @@ router.delete('/firmware/:id', async (req, res) => {
     await db.query('DELETE FROM firmware_updates WHERE id = ?', [id]);
     res.json({ message: 'Firmware entry deleted' });
   } catch (error) {
-    console.error('❌ Delete firmware error:', error);
+    console.error('Delete firmware error:', error);
     res.status(500).json({ error: 'Failed to delete firmware entry' });
   }
 });
@@ -286,7 +306,7 @@ router.post('/firmware/:id/deactivate', async (req, res) => {
     await db.query('UPDATE firmware_updates SET is_active = 0 WHERE id = ?', [id]);
     res.json({ message: 'Firmware update deactivated' });
   } catch (error) {
-    console.error('❌ Deactivate firmware error:', error);
+    console.error('Deactivate firmware error:', error);
     res.status(500).json({ error: 'Failed to deactivate firmware entry' });
   }
 });
@@ -296,10 +316,27 @@ router.post('/firmware/:id/deactivate', async (req, res) => {
 // GET /admin/data-loggers
 router.get('/data-loggers', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM data_loggers ORDER BY created_at DESC');
+    const isSuperAdmin = req.user?.role === 'super_admin';
+    let result;
+    if (isSuperAdmin) {
+      result = await db.query(
+        `SELECT dl.*, dr.status as deletion_status, dr.rejection_note, dr.id as deletion_request_id
+         FROM data_loggers dl
+         LEFT JOIN deletion_requests dr ON dr.resource_type = 'data_logger' AND dr.resource_id = dl.id AND dr.status = 'pending'
+         ORDER BY dl.created_at DESC`
+      );
+    } else {
+      result = await db.query(
+        `SELECT dl.*, dr.status as deletion_status, dr.rejection_note, dr.id as deletion_request_id
+         FROM data_loggers dl
+         LEFT JOIN deletion_requests dr ON dr.resource_type = 'data_logger' AND dr.resource_id = dl.id AND dr.status != 'approved'
+         WHERE (dr.status IS NULL OR dr.status = 'rejected')
+         ORDER BY dl.created_at DESC`
+      );
+    }
     res.json({ loggers: result.rows });
   } catch (error) {
-    console.error('❌ List data loggers error:', error);
+    console.error('List data loggers error:', error);
     res.status(500).json({ error: 'Failed to fetch data loggers' });
   }
 });
@@ -321,7 +358,7 @@ router.post('/data-loggers', async (req, res) => {
     );
     res.status(201).json({ logger: logger.rows[0] });
   } catch (error) {
-    console.error('❌ Create data logger error:', error);
+    console.error('Create data logger error:', error);
     if (error.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Serial number already registered' });
     res.status(500).json({ error: 'Failed to create data logger' });
   }
@@ -345,19 +382,157 @@ router.put('/data-loggers/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Logger not found' });
     res.json({ logger: result.rows[0] });
   } catch (error) {
-    console.error('❌ Update data logger error:', error);
+    console.error('Update data logger error:', error);
     res.status(500).json({ error: 'Failed to update data logger' });
   }
 });
 
-// DELETE /admin/data-loggers/:id
-router.delete('/data-loggers/:id', async (req, res) => {
+// DELETE /admin/data-loggers/:id — super_admin only
+router.delete('/data-loggers/:id', superAdminOnly, async (req, res) => {
   try {
+    // Remove any pending deletion requests for this resource
+    await db.query(
+      "DELETE FROM deletion_requests WHERE resource_type = 'data_logger' AND resource_id = ?",
+      [req.params.id]
+    );
     await db.query('DELETE FROM data_loggers WHERE id = ?', [req.params.id]);
     res.json({ message: 'Data logger deleted' });
   } catch (error) {
-    console.error('❌ Delete data logger error:', error);
+    console.error('Delete data logger error:', error);
     res.status(500).json({ error: 'Failed to delete data logger' });
+  }
+});
+
+// POST /admin/data-loggers/:id/request-delete — admin requests deletion
+router.post('/data-loggers/:id/request-delete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const logger = await db.query('SELECT name FROM data_loggers WHERE id = ?', [id]);
+    if (!logger.rows.length) return res.status(404).json({ error: 'Logger not found' });
+
+    // Check no pending request already exists
+    const existing = await db.query(
+      "SELECT id FROM deletion_requests WHERE resource_type = 'data_logger' AND resource_id = ? AND status = 'pending'",
+      [id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'A deletion request for this logger is already pending' });
+    }
+
+    await db.query(
+      "INSERT INTO deletion_requests (resource_type, resource_id, resource_name, requested_by) VALUES ('data_logger', ?, ?, ?)",
+      [id, logger.rows[0].name, req.user.id]
+    );
+
+    // Broadcast so super_admin panel updates live
+    req.app.get('wsManager')?.broadcast({ type: 'deletion_request_update' });
+
+    res.json({ message: 'Deletion request submitted' });
+  } catch (error) {
+    console.error('Request delete logger error:', error);
+    res.status(500).json({ error: 'Failed to submit deletion request' });
+  }
+});
+
+// ── DELETION REQUESTS (super_admin) ──────────────────────────────────────────
+
+// GET /admin/deletion-requests — list all pending requests
+router.get('/deletion-requests', superAdminOnly, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT dr.*, u.username as requested_by_username, u.full_name as requested_by_fullname
+       FROM deletion_requests dr
+       JOIN users u ON dr.requested_by = u.id
+       WHERE dr.status = 'pending'
+       ORDER BY dr.requested_at DESC`
+    );
+    res.json({ requests: result.rows });
+  } catch (error) {
+    console.error('List deletion requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch deletion requests' });
+  }
+});
+
+// POST /admin/deletion-requests/:id/approve
+router.post('/deletion-requests/:id/approve', superAdminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const drResult = await db.query('SELECT * FROM deletion_requests WHERE id = ?', [id]);
+    if (!drResult.rows.length) return res.status(404).json({ error: 'Request not found' });
+
+    const dr = drResult.rows[0];
+    if (dr.status !== 'pending') return res.status(400).json({ error: 'Request is not pending' });
+
+    // Delete the actual resource
+    if (dr.resource_type === 'data_logger') {
+      await db.query('DELETE FROM data_loggers WHERE id = ?', [dr.resource_id]);
+    } else if (dr.resource_type === 'device') {
+      await db.query('DELETE FROM devices WHERE id = ?', [dr.resource_id]);
+    }
+
+    await db.query(
+      "UPDATE deletion_requests SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [req.user.id, id]
+    );
+
+    req.app.get('wsManager')?.broadcast({ type: 'deletion_request_update' });
+    res.json({ message: 'Deletion approved' });
+  } catch (error) {
+    console.error('Approve deletion error:', error);
+    res.status(500).json({ error: 'Failed to approve deletion' });
+  }
+});
+
+// POST /admin/deletion-requests/:id/reject
+router.post('/deletion-requests/:id/reject', superAdminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+    const drResult = await db.query('SELECT * FROM deletion_requests WHERE id = ?', [id]);
+    if (!drResult.rows.length) return res.status(404).json({ error: 'Request not found' });
+    if (drResult.rows[0].status !== 'pending') return res.status(400).json({ error: 'Request is not pending' });
+
+    await db.query(
+      "UPDATE deletion_requests SET status = 'rejected', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, rejection_note = ? WHERE id = ?",
+      [req.user.id, note || null, id]
+    );
+
+    req.app.get('wsManager')?.broadcast({ type: 'deletion_request_update' });
+    res.json({ message: 'Deletion rejected' });
+  } catch (error) {
+    console.error('Reject deletion error:', error);
+    res.status(500).json({ error: 'Failed to reject deletion' });
+  }
+});
+
+// ── SESSIONS (super_admin) ────────────────────────────────────────────────────
+
+// GET /admin/sessions
+router.get('/sessions', superAdminOnly, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT s.id, s.user_id, s.created_at, s.expires_at,
+              u.username, u.full_name, u.role
+       FROM sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.expires_at > CURRENT_TIMESTAMP
+       ORDER BY s.created_at DESC`
+    );
+    res.json({ sessions: result.rows });
+  } catch (error) {
+    console.error('List sessions error:', error);
+    res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+
+// DELETE /admin/sessions/:id — revoke a session
+router.delete('/sessions/:id', superAdminOnly, async (req, res) => {
+  try {
+    await db.query('DELETE FROM sessions WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Session revoked' });
+  } catch (error) {
+    console.error('Revoke session error:', error);
+    res.status(500).json({ error: 'Failed to revoke session' });
   }
 });
 

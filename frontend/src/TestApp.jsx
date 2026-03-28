@@ -1,7 +1,7 @@
 import React from 'react';
 
 export default function TestApp() {
-  console.log('🎯 TestApp is rendering');
+  console.log('TestApp is rendering');
   return (
     <div style={{
       width: '100%',

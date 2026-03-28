@@ -9,7 +9,7 @@ router.get('/latest/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
 
     const result = await db.query(
-      `SELECT device_id, temperature, humidity, soil_temperature,
+      `SELECT device_id, temperature, humidity, water_temperature,
               pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
               timestamp
        FROM readings
@@ -24,7 +24,7 @@ router.get('/latest/:deviceId', async (req, res) => {
         deviceId,
         temperature: null,
         humidity: null,
-        soil_temperature: null,
+        water_temperature: null,
         pump_status: null,
         egg_rotation_motor_status: null,
         exhaust_fan_status: null,
@@ -36,7 +36,7 @@ router.get('/latest/:deviceId', async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Get latest reading error:', error);
+    console.error('Get latest reading error:', error);
     res.status(500).json({ error: 'Failed to fetch latest reading' });
   }
 });
@@ -47,8 +47,8 @@ router.get('/last-8/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
     const { parameter } = req.query; // 'temperature' or 'humidity'
 
-    if (!parameter || !['temperature', 'humidity', 'soil_temperature'].includes(parameter)) {
-      return res.status(400).json({ error: 'Parameter must be temperature, humidity, or soil_temperature' });
+    if (!parameter || !['temperature', 'humidity', 'water_temperature'].includes(parameter)) {
+      return res.status(400).json({ error: 'Parameter must be temperature, humidity, or water_temperature' });
     }
 
     const result = await db.query(
@@ -68,7 +68,7 @@ router.get('/last-8/:deviceId', async (req, res) => {
       readings
     });
   } catch (error) {
-    console.error('❌ Get last 8 readings error:', error);
+    console.error('Get last 8 readings error:', error);
     res.status(500).json({ error: 'Failed to fetch readings' });
   }
 });
@@ -85,17 +85,23 @@ router.get('/historical/:deviceId', async (req, res) => {
                  FROM readings WHERE device_id = ?`;
     const params = [deviceId];
 
+    // Filter by created_at (server time — always accurate).
+    // SQLite stores created_at as "YYYY-MM-DD HH:MM:SS" (CURRENT_TIMESTAMP, no T/Z).
+    // We must compare using the same format — ISO strings with 'T' fail because
+    // SQLite string-compares space (ASCII 32) < 'T' (ASCII 84), excluding same-day rows.
+    const toSQLiteStr = (iso) => new Date(iso).toISOString().replace('T', ' ').slice(0, 19);
+
     if (startDate) {
-      query += ` AND timestamp >= ?`;
-      params.push(new Date(startDate).toISOString());
+      query += ` AND created_at >= ?`;
+      params.push(toSQLiteStr(startDate));
     }
 
     if (endDate) {
-      query += ` AND timestamp <= ?`;
-      params.push(new Date(endDate).toISOString());
+      query += ` AND created_at <= ?`;
+      params.push(toSQLiteStr(endDate));
     }
 
-    query += ` ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(parseInt(limit, 10));
     params.push(parseInt(offset, 10));
 
@@ -103,7 +109,7 @@ router.get('/historical/:deviceId', async (req, res) => {
 
     res.json({ readings: result.rows });
   } catch (error) {
-    console.error('❌ Get historical readings error:', error);
+    console.error('Get historical readings error:', error);
     res.status(500).json({ error: 'Failed to fetch readings' });
   }
 });
