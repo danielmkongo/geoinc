@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   MdPowerSettingsNew, MdHistory, MdThermostat, MdWaterDrop,
-  MdGrass, MdCircle,
+  MdGrass, MdCircle, MdBolt, MdMemory,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CommandCenter } from '../components/CommandCenter';
@@ -9,90 +9,76 @@ import { CommandHistory } from '../components/CommandHistory';
 import { useDeviceData } from '../hooks/useDeviceData';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceStore } from '../store/deviceStore';
-import { isWithinMinutes } from '../utils/formatters';
+import { isWithinMinutes, formatRelativeTime } from '../utils/formatters';
 
 const tabs = [
   { id: 'control', label: 'Control Panel', icon: MdPowerSettingsNew },
   { id: 'history', label: 'Command History', icon: MdHistory },
 ];
 
-const ConditionPill = ({ icon: Icon, label, value, unit, ok, okColor, warnColor }) => (
-  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-semibold transition-colors
-    ${ok == null
-      ? 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-      : ok
-        ? `${okColor}`
-        : `${warnColor}`
-    }`}>
-    <Icon size={15} className="flex-shrink-0" />
-    <span className="hidden sm:inline text-xs font-medium opacity-75">{label}</span>
-    <span>{value}{unit}</span>
-  </div>
-);
-
 export const ControlPage = () => {
-  const deviceId        = useDeviceStore((s) => s.deviceId);
-  const currentReading  = useDeviceStore((s) => s.currentReading);
+  const deviceId         = useDeviceStore((s) => s.deviceId);
+  const currentReading   = useDeviceStore((s) => s.currentReading);
   const serverLastUpdate = useDeviceStore((s) => s.serverLastUpdate);
-  const lastUpdate      = useDeviceStore((s) => s.lastUpdate);
-  const { loading }     = useDeviceData(deviceId);
+  const lastUpdate       = useDeviceStore((s) => s.lastUpdate);
+  const firmwareVersion  = useDeviceStore((s) => s.firmwareVersion);
+  const { loading }      = useDeviceData(deviceId);
   const [activeTab, setActiveTab] = useState('control');
 
   useWebSocket();
 
   if (loading) return <LoadingSpinner fullScreen />;
 
-  const temperature     = currentReading?.temperature ?? null;
-  const humidity        = currentReading?.humidity ?? null;
-  const waterTemp       = currentReading?.water_temperature ?? null;
-  const tempNormal      = temperature != null && temperature >= 36 && temperature <= 39;
-  const humidNormal     = humidity    != null && humidity    >= 40 && humidity    <= 70;
-  const isOnline        = isWithinMinutes(serverLastUpdate, 20) ||
+  const temperature  = currentReading?.temperature  ?? null;
+  const humidity     = currentReading?.humidity     ?? null;
+  const waterTemp    = currentReading?.water_temperature ?? null;
+  const tempNormal   = temperature != null && temperature >= 36 && temperature <= 39;
+  const humidNormal  = humidity    != null && humidity    >= 40 && humidity    <= 70;
+  const isOnline     = isWithinMinutes(serverLastUpdate, 20) ||
     (lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 20 * 60 * 1000);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 lg:p-8 pt-16 lg:pt-8">
 
-      {/* ── Page header ─────────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-            System Control
-          </h1>
-          <p className="text-gray-400 dark:text-gray-500 mt-1 text-sm">
-            Manage and monitor your incubator actuators
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">System Control</h1>
+          <p className="text-gray-400 dark:text-gray-500 mt-0.5 text-sm">Manage and monitor incubator actuators</p>
         </div>
 
-        {/* Live condition pills */}
+        {/* Condition pills */}
         <div className="flex flex-wrap items-center gap-2">
-          <ConditionPill
-            icon={MdThermostat}
-            label="Amb"
-            value={temperature != null ? temperature.toFixed(1) : '—'}
-            unit={temperature != null ? '°C' : ''}
-            ok={temperature != null ? tempNormal : null}
-            okColor="bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800/50 dark:text-orange-300"
-            warnColor="bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300"
-          />
-          <ConditionPill
-            icon={MdWaterDrop}
-            label="Humidity"
-            value={humidity != null ? humidity.toFixed(1) : '—'}
-            unit={humidity != null ? '%' : ''}
-            ok={humidity != null ? humidNormal : null}
-            okColor="bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300"
-            warnColor="bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300"
-          />
-          <ConditionPill
-            icon={MdGrass}
-            label="Spring"
-            value={waterTemp != null ? waterTemp.toFixed(1) : '—'}
-            unit={waterTemp != null ? '°C' : ''}
-            ok={null}
-            okColor=""
-            warnColor=""
-          />
+          {[
+            {
+              icon: MdThermostat,
+              value: temperature != null ? `${temperature.toFixed(1)}°C` : '—',
+              ok: temperature != null ? tempNormal : null,
+              okCls: 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800/50 dark:text-orange-300',
+              warnCls: 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300',
+            },
+            {
+              icon: MdWaterDrop,
+              value: humidity != null ? `${humidity.toFixed(1)}%` : '—',
+              ok: humidity != null ? humidNormal : null,
+              okCls: 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300',
+              warnCls: 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300',
+            },
+            {
+              icon: MdGrass,
+              value: waterTemp != null ? `${waterTemp.toFixed(1)}°C` : '—',
+              ok: null,
+              okCls: 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300',
+              warnCls: '',
+            },
+          ].map(({ icon: Icon, value, ok, okCls, warnCls }, i) => (
+            <div key={i} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-semibold
+              ${ok == null ? 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300' : ok ? okCls : warnCls}`}>
+              <Icon size={14} />
+              <span>{value}</span>
+            </div>
+          ))}
+
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold
             ${isOnline
               ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-300'
@@ -105,7 +91,7 @@ export const ControlPage = () => {
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl w-fit mb-8 border border-gray-200 dark:border-slate-700/50">
+      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl w-fit mb-6 border border-gray-200 dark:border-slate-700/50">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -125,29 +111,88 @@ export const ControlPage = () => {
       {/* ── Control Panel ───────────────────────────────────────────────── */}
       {activeTab === 'control' && (
         <div className="space-y-5">
-          {/* The main control surface */}
+          {/* Hero control surface */}
           <CommandCenter deviceId={deviceId} />
 
-          {/* Info row below */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10">
-              <span className="text-amber-500 text-lg flex-shrink-0 mt-0.5">⚠️</span>
-              <div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Safety Notice</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
-                  Commands take effect immediately on the device. Enable override only when you intend to make manual adjustments.
-                </p>
+          {/* Below: history feed + device info */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            {/* Recent commands feed — takes 2 cols */}
+            <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                  <MdHistory size={16} className="text-gray-400 dark:text-slate-500" />
+                  Recent Activity
+                </h3>
+              </div>
+              <CommandHistory deviceId={deviceId} compact />
+            </div>
+
+            {/* Device info panel */}
+            <div className="space-y-3">
+              {/* Connection card */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Connection</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <MdBolt size={15} />
+                      Status
+                    </div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full
+                      ${isOnline
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'
+                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>
+                      {isOnline ? '● Online' : '○ Offline'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Last seen</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {serverLastUpdate ? formatRelativeTime(serverLastUpdate) : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <MdMemory size={15} />
+                      Firmware
+                    </div>
+                    <span className="text-xs font-mono font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">
+                      {firmwareVersion ?? '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Device ID</span>
+                    <span className="text-xs font-mono text-gray-500 dark:text-slate-500">{deviceId}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live readings card */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Live Readings</p>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Amb Temp', value: temperature != null ? `${temperature.toFixed(1)} °C` : '—', ok: temperature != null ? tempNormal : null },
+                    { label: 'Humidity', value: humidity != null ? `${humidity.toFixed(1)} %`  : '—', ok: humidity != null ? humidNormal : null },
+                    { label: 'Spring Temp', value: waterTemp != null ? `${waterTemp.toFixed(1)} °C` : '—', ok: null },
+                  ].map(({ label, value, ok }) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
+                      <span className={`text-sm font-semibold
+                        ${ok === true ? 'text-emerald-600 dark:text-emerald-400' :
+                          ok === false ? 'text-red-600 dark:text-red-400' :
+                          'text-gray-700 dark:text-gray-300'
+                        }`}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="flex items-start gap-3 p-4 rounded-2xl border border-blue-200 bg-blue-50 dark:border-blue-800/40 dark:bg-blue-900/10">
-              <span className="text-blue-500 text-lg flex-shrink-0 mt-0.5">ℹ️</span>
-              <div>
-                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">How it works</p>
-                <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5 leading-relaxed">
-                  Commands are queued on the server. If the device is offline it will pick them up on reconnect. Cards stay in WAIT until the device confirms.
-                </p>
-              </div>
-            </div>
+
           </div>
         </div>
       )}

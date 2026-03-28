@@ -42,8 +42,13 @@ router.post('/send/:deviceId', async (req, res) => {
         radiator_fan
       });
 
+      await db.query(
+        'UPDATE command_logs SET status = ? WHERE id = ?',
+        ['sent', commandId]
+      );
+
       res.json({
-        status: 'pending',
+        status: 'sent',
         message: 'Command sent to device — waiting for confirmation',
         commandId,
         timestamp: new Date()

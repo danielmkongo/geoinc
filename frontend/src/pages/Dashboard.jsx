@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt, MdGrass, MdEgg, MdMemory, MdClose,
+  MdThermostat, MdWaterDrop, MdWarning, MdCheckCircle, MdBolt,
+  MdGrass, MdEgg, MdMemory, MdClose, MdTrendingUp, MdCircle,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LiveChart } from '../components/Charts';
@@ -15,62 +16,108 @@ import { formatRelativeTime, isWithinMinutes } from '../utils/formatters';
 
 const TZ = 'Africa/Dar_es_Salaam';
 
-const StatCard = ({ title, value, unit, icon: Icon, iconBg, borderClass, trend, trendClass, subtitle }) => (
-  <div className={`relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 p-5 lg:p-6 ${borderClass}`}>
-    <div className="flex items-start justify-between mb-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 ${iconBg}`}>
-        <Icon size={22} className="text-white" />
+// ── Range bar: shows a target zone and the current value position ─────────────
+const RangeBar = ({ value, min, max, targetMin, targetMax, colorClass }) => {
+  if (value == null) return null;
+  const pct        = (v) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+  const valPct     = pct(value);
+  const tStartPct  = pct(targetMin);
+  const tWidthPct  = pct(targetMax) - tStartPct;
+  const inRange    = value >= targetMin && value <= targetMax;
+  return (
+    <div className="relative h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mt-3 overflow-visible">
+      {/* Target zone */}
+      <div
+        className="absolute top-0 h-full rounded-full bg-emerald-200 dark:bg-emerald-800/50"
+        style={{ left: `${tStartPct}%`, width: `${tWidthPct}%` }}
+      />
+      {/* Current value cursor */}
+      <div
+        className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-slate-800 shadow-md -translate-x-1/2 transition-all duration-500 ${inRange ? colorClass : 'bg-red-500'}`}
+        style={{ left: `${valPct}%` }}
+      />
+    </div>
+  );
+};
+
+// ── Metric card ───────────────────────────────────────────────────────────────
+const MetricCard = ({
+  title, value, unit, icon: Icon, iconBg,
+  borderClass, trendLabel, trendClass,
+  subtitle, children,
+}) => (
+  <div className={`relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl border shadow-sm hover:shadow-md transition-shadow duration-200 p-5 ${borderClass}`}>
+    <div className="flex items-start justify-between mb-3">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md flex-shrink-0 ${iconBg}`}>
+        <Icon size={20} className="text-white" />
       </div>
-      {trend && (
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${trendClass}`}>{trend}</span>
+      {trendLabel && (
+        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${trendClass}`}>{trendLabel}</span>
       )}
     </div>
-    <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">{title}</p>
+    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">{title}</p>
     <div className="flex items-baseline gap-1">
       <span className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{value}</span>
-      {unit && <span className="text-base text-gray-400 dark:text-gray-500 font-medium">{unit}</span>}
+      {unit && <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">{unit}</span>}
     </div>
-    {subtitle && <p className="text-xs mt-2 text-gray-400 dark:text-gray-500">{subtitle}</p>}
+    {children}
+    {subtitle && <p className="text-[11px] mt-2.5 text-gray-400 dark:text-gray-500">{subtitle}</p>}
   </div>
 );
 
+// ── Mini stat (compact, for less critical metrics) ────────────────────────────
+const MiniStat = ({ title, value, unit, icon: Icon, iconCls, accent, subtitle }) => (
+  <div className={`flex items-center gap-4 bg-white dark:bg-slate-800 rounded-2xl border shadow-sm p-4 ${accent}`}>
+    <div className="flex-shrink-0">
+      <Icon size={22} className={iconCls} />
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{title}</p>
+      <p className="text-xl font-bold text-gray-900 dark:text-white truncate">
+        {value}{unit && <span className="text-sm font-medium text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>}
+      </p>
+      {subtitle && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{subtitle}</p>}
+    </div>
+  </div>
+);
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 const Dashboard = () => {
-  const deviceId = useDeviceStore((state) => state.deviceId);
-  const currentReading = useDeviceStore((state) => state.currentReading);
-  const lastUpdate = useDeviceStore((state) => state.lastUpdate);
-  const serverLastUpdate = useDeviceStore((state) => state.serverLastUpdate);
-  const firmwareVersion = useDeviceStore((state) => state.firmwareVersion);
-  const incubationStart = useDeviceStore((state) => state.incubationStart);
-  const setIncubationStart = useDeviceStore((state) => state.setIncubationStart);
-  const resetActuators = useDeviceStore((state) => state.resetActuators);
+  const deviceId         = useDeviceStore((s) => s.deviceId);
+  const currentReading   = useDeviceStore((s) => s.currentReading);
+  const lastUpdate       = useDeviceStore((s) => s.lastUpdate);
+  const serverLastUpdate = useDeviceStore((s) => s.serverLastUpdate);
+  const firmwareVersion  = useDeviceStore((s) => s.firmwareVersion);
+  const incubationStart  = useDeviceStore((s) => s.incubationStart);
+  const setIncubationStart = useDeviceStore((s) => s.setIncubationStart);
+  const resetActuators   = useDeviceStore((s) => s.resetActuators);
   const { loading, error } = useDeviceData(deviceId);
-  const alerts = useAlertStore((state) => state.alerts);
-  const setAlerts = useAlertStore((state) => state.setAlerts);
-  const [alertsLoaded, setAlertsLoaded] = useState(false);
-  const [now, setNow] = useState(new Date());
-  const [resetting, setResetting] = useState(false);
-  const [currentBatch, setCurrentBatch] = useState(null);
+  const alerts           = useAlertStore((s) => s.alerts);
+  const setAlerts        = useAlertStore((s) => s.setAlerts);
+  const acknowledgeAlert = useAlertStore((s) => s.acknowledgeAlert);
 
-  // New Batch modal state
+  const [alertsLoaded, setAlertsLoaded]     = useState(false);
+  const [now, setNow]                       = useState(new Date());
+  const [resetting, setResetting]           = useState(false);
+  const [currentBatch, setCurrentBatch]     = useState(null);
   const [showNewBatchModal, setShowNewBatchModal] = useState(false);
-  const [batchEggType, setBatchEggType] = useState('chicken');
-  const [batchEggCount, setBatchEggCount] = useState('');
-
-  // End Batch modal state
+  const [batchEggType, setBatchEggType]     = useState('chicken');
+  const [batchEggCount, setBatchEggCount]   = useState('');
   const [showEndBatchModal, setShowEndBatchModal] = useState(false);
-  const [endReason, setEndReason] = useState('');
+  const [endReason, setEndReason]           = useState('');
   const [successfulHatches, setSuccessfulHatches] = useState('');
-  const [ending, setEnding] = useState(false);
+  const [ending, setEnding]                 = useState(false);
+  const [ackingAll, setAckingAll]           = useState(false);
 
   useWebSocket();
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
-    const loadAlerts = async () => {
+    const load = async () => {
       try {
         const res = await alertsAPI.getAll(deviceId);
         setAlerts(res.data.alerts);
@@ -80,17 +127,13 @@ const Dashboard = () => {
         setAlertsLoaded(true);
       }
     };
-    loadAlerts();
+    load();
   }, [deviceId, setAlerts]);
 
-  // Reset all toggle switches when device goes offline
   useEffect(() => {
-    if (serverLastUpdate && !isWithinMinutes(serverLastUpdate, 20)) {
-      resetActuators();
-    }
+    if (serverLastUpdate && !isWithinMinutes(serverLastUpdate, 20)) resetActuators();
   }, [serverLastUpdate, resetActuators]);
 
-  // Load current batch on mount
   useEffect(() => {
     if (!deviceId) return;
     devicesAPI.getCurrentBatch(deviceId)
@@ -103,8 +146,7 @@ const Dashboard = () => {
     try {
       setResetting(true);
       const res = await devicesAPI.resetIncubationStart(deviceId, {
-        egg_type: batchEggType,
-        egg_count: parseInt(batchEggCount),
+        egg_type: batchEggType, egg_count: parseInt(batchEggCount),
       });
       setIncubationStart(res.data.incubation_start);
       setCurrentBatch({ egg_type: batchEggType, egg_count: parseInt(batchEggCount), status: 'active' });
@@ -139,50 +181,62 @@ const Dashboard = () => {
     }
   };
 
+  const handleAcknowledgeAll = async () => {
+    const unread = alerts.filter((a) => !a.acknowledged);
+    if (!unread.length) return;
+    try {
+      setAckingAll(true);
+      await Promise.all(unread.map((a) => alertsAPI.acknowledge(a.id)));
+      unread.forEach((a) => acknowledgeAlert(a.id));
+    } catch (err) {
+      console.error('Acknowledge all error:', err);
+    } finally {
+      setAckingAll(false);
+    }
+  };
+
   if (loading || !alertsLoaded) return <LoadingSpinner fullScreen />;
 
-  // Use server-stamped last_update (UTC-safe) — falls back to WS timestamp if server value not yet loaded
   const isOnline = isWithinMinutes(serverLastUpdate, 20) ||
     (lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 20 * 60 * 1000);
 
-  const temperature = currentReading?.temperature ?? 0;
-  const humidity = currentReading?.humidity ?? 0;
-  const soilTemperature = currentReading?.water_temperature ?? null;
-  const unreadAlerts = alerts.filter((a) => !a.acknowledged).length;
-  const tempNormal = temperature >= 36 && temperature <= 39;
-  const humidNormal = humidity >= 40 && humidity <= 70;
+  const temperature   = currentReading?.temperature ?? null;
+  const humidity      = currentReading?.humidity ?? null;
+  const waterTemp     = currentReading?.water_temperature ?? null;
+  const tempNormal    = temperature != null && temperature >= 36 && temperature <= 39;
+  const humidNormal   = humidity    != null && humidity    >= 40 && humidity    <= 70;
+  const unreadAlerts  = alerts.filter((a) => !a.acknowledged).length;
+  const criticalCount = alerts.filter((a) => !a.acknowledged && a.severity === 'critical').length;
 
-  // Incubation day calculation — compare calendar dates in Tanzania time so the
-  // day increments at midnight EAT regardless of what time the batch was started.
+  // Incubation day
   let incubationDay = null;
   if (incubationStart) {
     const startMs = typeof incubationStart === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(incubationStart)
       ? new Date(incubationStart.replace(' ', 'T') + 'Z').getTime()
       : new Date(incubationStart).getTime();
-    const toEATDate = (ms) => {
-      const d = new Date(new Date(ms).toLocaleDateString('en-CA', { timeZone: TZ }));
-      return d;
-    };
-    const diffDays = Math.round((toEATDate(Date.now()) - toEATDate(startMs)) / (1000 * 60 * 60 * 24));
-    incubationDay = Math.max(1, diffDays + 1);
+    const toEATDate = (ms) => new Date(new Date(ms).toLocaleDateString('en-CA', { timeZone: TZ }));
+    incubationDay = Math.max(1, Math.round((toEATDate(Date.now()) - toEATDate(startMs)) / (1000 * 60 * 60 * 24)) + 1);
   }
+  const batchProgress = incubationDay != null ? Math.min(100, Math.round((incubationDay / 21) * 100)) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 lg:p-8 pt-16 lg:pt-8">
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 lg:p-8 pt-16 lg:pt-8 space-y-6">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-gray-400 dark:text-gray-500 mt-1 text-sm">
+          <p className="text-gray-400 dark:text-gray-500 mt-0.5 text-sm font-mono">
             {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: TZ })}
             {' · '}
-            <span className="font-mono">{now.toLocaleTimeString('en-US', { timeZone: TZ })}</span>
+            {now.toLocaleTimeString('en-US', { timeZone: TZ })}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {currentBatch && (
             <button
               onClick={() => setShowEndBatchModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-700 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+              className="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-700 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
             >
               End Batch
             </button>
@@ -190,134 +244,211 @@ const Dashboard = () => {
           <button
             onClick={() => setShowNewBatchModal(true)}
             disabled={resetting}
-            className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
           >
-            <MdEgg size={14} />
-            New Batch
+            <MdEgg size={13} /> New Batch
           </button>
-          {isOnline ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              Live
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-600 dark:text-red-400 text-xs font-semibold">
-              <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-              Offline
-            </div>
-          )}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold
+            ${isOnline
+              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400'
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400'
+            }`}>
+            <MdCircle size={8} className={isOnline ? 'animate-pulse text-emerald-500' : 'text-red-500'} />
+            {isOnline ? 'Live' : 'Offline'}
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
           <MdWarning size={18} className="flex-shrink-0" /> {error}
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-5 mb-6">
-        <StatCard
-          title="Temperature"
-          value={temperature.toFixed(1)}
-          unit="°C"
+      {/* ── Active batch banner ──────────────────────────────────────────── */}
+      {incubationDay != null && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <MdEgg size={22} className="text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Active Batch</p>
+                <p className="font-bold text-gray-900 dark:text-white text-sm">
+                  {currentBatch ? `${currentBatch.egg_count} ${currentBatch.egg_type.charAt(0).toUpperCase() + currentBatch.egg_type.slice(1)} Eggs` : 'Incubation in progress'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-6 text-center">
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{incubationDay}</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">of 21 days</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.max(0, 21 - incubationDay)}</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">days left</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{batchProgress}%</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">complete</p>
+              </div>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="relative h-2 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${incubationDay > 18 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+              style={{ width: `${batchProgress}%` }}
+            />
+          </div>
+          {incubationDay > 18 && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2 flex items-center gap-1">
+              <MdTrendingUp size={13} /> Hatching window approaching
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Primary stats ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Temperature */}
+        <MetricCard
+          title="Amb Temperature"
+          value={temperature != null ? temperature.toFixed(1) : '—'}
+          unit={temperature != null ? '°C' : ''}
           icon={MdThermostat}
+          iconBg={tempNormal ? 'bg-gradient-to-br from-orange-400 to-orange-600 shadow-orange-300/50' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-400/50'}
           borderClass={tempNormal ? 'border-orange-100 dark:border-orange-900/30' : 'border-red-200 dark:border-red-900/40'}
-          iconBg={tempNormal ? 'bg-gradient-to-br from-orange-400 to-orange-600 shadow-orange-400/40' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40'}
-          trend={tempNormal ? '✓ Normal' : '⚠ Alert'}
+          trendLabel={temperature != null ? (tempNormal ? '✓ Normal' : '⚠ Alert') : '—'}
           trendClass={tempNormal ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}
-          subtitle="Target: 36 – 39°C"
-        />
-        <StatCard
+          subtitle="Target: 36 – 39 °C"
+        >
+          <RangeBar value={temperature} min={30} max={45} targetMin={36} targetMax={39} colorClass="bg-orange-500" />
+        </MetricCard>
+
+        {/* Humidity */}
+        <MetricCard
           title="Humidity"
-          value={humidity.toFixed(1)}
-          unit="%"
+          value={humidity != null ? humidity.toFixed(1) : '—'}
+          unit={humidity != null ? '%' : ''}
           icon={MdWaterDrop}
+          iconBg={humidNormal ? 'bg-gradient-to-br from-blue-400 to-cyan-500 shadow-blue-300/50' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-400/50'}
           borderClass={humidNormal ? 'border-blue-100 dark:border-blue-900/30' : 'border-red-200 dark:border-red-900/40'}
-          iconBg={humidNormal ? 'bg-gradient-to-br from-blue-400 to-cyan-500 shadow-blue-400/40' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40'}
-          trend={humidNormal ? '✓ Normal' : '⚠ Alert'}
+          trendLabel={humidity != null ? (humidNormal ? '✓ Normal' : '⚠ Alert') : '—'}
           trendClass={humidNormal ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}
-          subtitle="Target: 40 – 70%"
-        />
-        <StatCard
-          title="Fluid Temperature"
-          value={soilTemperature !== null ? soilTemperature.toFixed(1) : '—'}
-          unit={soilTemperature !== null ? '°C' : ''}
+          subtitle="Target: 40 – 70 %"
+        >
+          <RangeBar value={humidity} min={20} max={100} targetMin={40} targetMax={70} colorClass="bg-blue-500" />
+        </MetricCard>
+
+        {/* Spring / fluid temp */}
+        <MetricCard
+          title="Spring Temp"
+          value={waterTemp != null ? waterTemp.toFixed(1) : '—'}
+          unit={waterTemp != null ? '°C' : ''}
           icon={MdGrass}
+          iconBg="bg-gradient-to-br from-teal-400 to-teal-600 shadow-teal-300/50"
           borderClass="border-teal-100 dark:border-teal-900/30"
-          iconBg="bg-gradient-to-br from-teal-400 to-teal-600 shadow-teal-400/40"
-          subtitle="Fluid / water temp"
+          subtitle="Fluid / water temperature"
         />
-        <StatCard
-          title="Incubation Day"
-          value={incubationDay !== null ? `${incubationDay}` : '—'}
-          unit={incubationDay !== null ? '/ 21' : ''}
-          icon={MdEgg}
-          borderClass={incubationDay !== null && incubationDay > 18 ? 'border-emerald-200 dark:border-emerald-900/40' : 'border-amber-100 dark:border-amber-900/30'}
-          iconBg={incubationDay !== null && incubationDay > 18 ? 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-emerald-400/40' : 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-400/40'}
-          trend={incubationDay !== null && incubationDay > 18 ? 'Hatching soon' : incubationDay !== null ? 'In progress' : 'Not set'}
-          trendClass={incubationDay !== null && incubationDay > 18 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}
-          subtitle={
-            incubationDay !== null
-              ? `${Math.max(0, 21 - incubationDay)} days remaining${currentBatch ? ` · ${currentBatch.egg_count} ${currentBatch.egg_type} eggs` : ''}`
-              : 'Click New Batch to start'
-          }
-        />
-        <StatCard
+
+        {/* Alerts */}
+        <MetricCard
           title="Alerts"
           value={unreadAlerts}
           icon={unreadAlerts > 0 ? MdWarning : MdCheckCircle}
-          borderClass={unreadAlerts > 0 ? 'border-amber-200 dark:border-amber-900/40' : 'border-emerald-100 dark:border-emerald-900/30'}
-          iconBg={unreadAlerts > 0 ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-400/40' : 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-emerald-400/40'}
-          trend={unreadAlerts > 0 ? 'Needs review' : 'All clear'}
-          trendClass={unreadAlerts > 0 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}
+          iconBg={criticalCount > 0
+            ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-400/50'
+            : unreadAlerts > 0
+              ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-300/50'
+              : 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-emerald-300/50'}
+          borderClass={criticalCount > 0
+            ? 'border-red-200 dark:border-red-900/40'
+            : unreadAlerts > 0
+              ? 'border-amber-200 dark:border-amber-900/30'
+              : 'border-emerald-100 dark:border-emerald-900/30'}
+          trendLabel={criticalCount > 0 ? `${criticalCount} critical` : unreadAlerts > 0 ? 'Needs review' : 'All clear'}
+          trendClass={criticalCount > 0
+            ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            : unreadAlerts > 0
+              ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+              : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}
           subtitle="Unacknowledged"
         />
-        <StatCard
+      </div>
+
+      {/* ── Secondary stats ───────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <MiniStat
           title="System"
           value={isOnline ? 'Online' : 'Offline'}
           icon={MdBolt}
-          borderClass={isOnline ? 'border-emerald-100 dark:border-emerald-900/30' : 'border-red-200 dark:border-red-900/40'}
-          iconBg={isOnline ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-emerald-400/40' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40'}
-          trend={isOnline ? 'Connected' : 'Disconnected'}
-          trendClass={isOnline ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}
+          iconCls={isOnline ? 'text-emerald-500' : 'text-red-500'}
+          accent={isOnline ? 'border-emerald-100 dark:border-emerald-900/30' : 'border-red-200 dark:border-red-900/30'}
           subtitle={serverLastUpdate ? 'Last seen: ' + formatRelativeTime(serverLastUpdate) : 'No data received'}
         />
-        <StatCard
+        <MiniStat
           title="Firmware"
           value={firmwareVersion ?? '—'}
           icon={MdMemory}
-          borderClass="border-violet-100 dark:border-violet-900/30"
-          iconBg="bg-gradient-to-br from-violet-400 to-violet-600 shadow-violet-400/40"
-          trend="Device FW"
-          trendClass="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"
+          iconCls="text-violet-500"
+          accent="border-violet-100 dark:border-violet-900/30"
           subtitle={firmwareVersion ? 'Last reported version' : 'Waiting for device'}
+        />
+        <MiniStat
+          title="Incubation Day"
+          value={incubationDay != null ? `Day ${incubationDay}` : 'No batch'}
+          icon={MdEgg}
+          iconCls={incubationDay != null && incubationDay > 18 ? 'text-emerald-500' : 'text-amber-500'}
+          accent={incubationDay != null && incubationDay > 18 ? 'border-emerald-100 dark:border-emerald-900/30' : 'border-amber-100 dark:border-amber-900/30'}
+          subtitle={incubationDay != null ? `${Math.max(0, 21 - incubationDay)} days remaining` : 'Click New Batch to start'}
         />
       </div>
 
-      <div className="mb-6">
-        <LiveChart />
-      </div>
+      {/* ── Live chart ───────────────────────────────────────────────────── */}
+      <LiveChart />
 
-      <div className="mb-6">
-        <CommandCenter deviceId={deviceId} />
-      </div>
+      {/* ── Command center ───────────────────────────────────────────────── */}
+      <CommandCenter deviceId={deviceId} />
 
+      {/* ── Alerts panel ─────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5 lg:p-6">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <MdWarning size={18} className="text-amber-500" />
-            Recent Alerts
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <MdWarning size={18} className={criticalCount > 0 ? 'text-red-500' : 'text-amber-500'} />
+              Recent Alerts
+            </h3>
+            {unreadAlerts > 0 && (
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold
+                ${criticalCount > 0
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                }`}>
+                {unreadAlerts} unread
+              </span>
+            )}
+          </div>
           {unreadAlerts > 0 && (
-            <span className="px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold rounded-full">
-              {unreadAlerts} unread
-            </span>
+            <button
+              onClick={handleAcknowledgeAll}
+              disabled={ackingAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold
+                text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-600
+                hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700
+                dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400
+                transition-all disabled:opacity-50"
+            >
+              <MdCheckCircle size={14} className={ackingAll ? 'animate-pulse' : ''} />
+              {ackingAll ? 'Acknowledging…' : 'Acknowledge All'}
+            </button>
           )}
         </div>
         <AlertsPanel />
       </div>
 
-      {/* New Batch Modal */}
+      {/* ── New Batch Modal ───────────────────────────────────────────────── */}
       {showNewBatchModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
@@ -360,10 +491,7 @@ const Dashboard = () => {
               <p className="text-xs text-gray-400 dark:text-gray-500">This will reset the incubation timer to today and notify the device.</p>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button
-                onClick={() => setShowNewBatchModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-              >
+              <button onClick={() => setShowNewBatchModal(false)} className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                 Cancel
               </button>
               <button
@@ -378,7 +506,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* End Batch Modal */}
+      {/* ── End Batch Modal ───────────────────────────────────────────────── */}
       {showEndBatchModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
@@ -423,10 +551,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button
-                onClick={() => setShowEndBatchModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-              >
+              <button onClick={() => setShowEndBatchModal(false)} className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                 Cancel
               </button>
               <button
