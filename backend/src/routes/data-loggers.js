@@ -103,8 +103,8 @@ router.get('/:id/readings', async (req, res) => {
     const { startDate, endDate, limit = 500 } = req.query;
     let sql = 'SELECT * FROM weather_readings WHERE data_logger_id = ?';
     const params = [req.params.id];
-    if (startDate) { sql += ' AND timestamp >= ?'; params.push(startDate); }
-    if (endDate)   { sql += ' AND timestamp <= ?'; params.push(endDate); }
+    if (startDate) { sql += ' AND timestamp >= ?'; params.push(new Date(startDate).toISOString().replace('T', ' ').substring(0, 19)); }
+    if (endDate)   { sql += ' AND timestamp <= ?'; params.push(new Date(endDate).toISOString().replace('T', ' ').substring(0, 19)); }
     sql += ' ORDER BY timestamp DESC LIMIT ?';
     params.push(parseInt(limit, 10));
 

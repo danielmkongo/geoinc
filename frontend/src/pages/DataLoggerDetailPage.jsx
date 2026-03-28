@@ -61,21 +61,21 @@ const fmtShort = (ts) =>
 // ── chart configs ─────────────────────────────────────────────────────────────
 
 const CHARTS = [
-  { key: 'temperature',         label: 'Temperature (°C)',        color: '#f97316', unit: '°C' },
+  { key: 'temperature',         label: 'Amb Temp (°C)',           color: '#f97316', unit: '°C' },
   { key: 'humidity',            label: 'Humidity (%)',             color: '#3b82f6', unit: '%' },
   { key: 'atmospheric_pressure',label: 'Pressure (hPa)',           color: '#8b5cf6', unit: ' hPa' },
   { key: 'wind_speed',          label: 'Wind Speed (m/s)',         color: '#06b6d4', unit: ' m/s' },
   { key: 'wind_gust',           label: 'Wind Gust (m/s)',          color: '#0ea5e9', unit: ' m/s' },
   { key: 'dew_point',           label: 'Dew Point (°C)',           color: '#10b981', unit: '°C' },
   { key: 'light_intensity',     label: 'Light Intensity (lux)',    color: '#eab308', unit: ' lux' },
-  { key: 'water_temp',          label: 'Water Temp (°C)',          color: '#14b8a6', unit: '°C' },
+  { key: 'water_temp',          label: 'Spring Temp (°C)',         color: '#14b8a6', unit: '°C' },
   { key: 'rainfall',            label: 'Rainfall (mm)',            color: '#6366f1', unit: ' mm' },
   { key: 'battery_voltage',     label: 'Battery Voltage (V)',      color: '#84cc16', unit: ' V' },
 ];
 
 const TABLE_COLS = [
   { key: 'timestamp',             label: 'Timestamp' },
-  { key: 'temperature',           label: 'Temp (°C)' },
+  { key: 'temperature',           label: 'Amb Temp (°C)' },
   { key: 'humidity',              label: 'Humidity (%)' },
   { key: 'atmospheric_pressure',  label: 'Pressure (hPa)' },
   { key: 'wind_speed',            label: 'Wind (m/s)' },
@@ -83,7 +83,7 @@ const TABLE_COLS = [
   { key: 'wind_gust',             label: 'Gust (m/s)' },
   { key: 'dew_point',             label: 'Dew Pt (°C)' },
   { key: 'light_intensity',       label: 'Light (lux)' },
-  { key: 'water_temp',            label: 'H₂O Temp (°C)' },
+  { key: 'water_temp',            label: 'Spring Temp (°C)' },
   { key: 'rainfall',              label: 'Rain (mm)' },
   { key: 'battery_voltage',       label: 'Battery (V)' },
 ];
@@ -153,7 +153,7 @@ export const DataLoggerDetailPage = () => {
       const [loggerRes, latestRes, readingsRes] = await Promise.all([
         dataLoggersAPI.getById(id),
         dataLoggersAPI.getLatest(id),
-        dataLoggersAPI.getReadings(id, startDate, endDate, 1000),
+        dataLoggersAPI.getReadings(id, startDate, endDate, 5000),
       ]);
       setLogger(loggerRes.data.logger);
       setLatest(latestRes.data.reading);
@@ -178,7 +178,7 @@ export const DataLoggerDetailPage = () => {
   const handleExportExcel = () => {
     const rows = readings.map((r) => ({
       Timestamp: new Date(r.timestamp).toLocaleString(),
-      'Temperature (°C)': r.temperature,
+      'Amb Temp (°C)': r.temperature,
       'Humidity (%)': r.humidity,
       'Pressure (hPa)': r.atmospheric_pressure,
       'Wind Speed (m/s)': r.wind_speed,
@@ -186,7 +186,7 @@ export const DataLoggerDetailPage = () => {
       'Wind Gust (m/s)': r.wind_gust,
       'Dew Point (°C)': r.dew_point,
       'Light (lux)': r.light_intensity,
-      'Water Temp (°C)': r.water_temp,
+      'Spring Temp (°C)': r.water_temp,
       'Rainfall (mm)': r.rainfall,
       'Battery (V)': r.battery_voltage,
       'Serial Number': r.serial_number,
@@ -325,7 +325,7 @@ export const DataLoggerDetailPage = () => {
           {/* Latest stats */}
           {latest && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-              <StatCard label="Temperature" value={latest.temperature} unit="°C" color="text-orange-500" />
+              <StatCard label="Amb Temp" value={latest.temperature} unit="°C" color="text-orange-500" />
               <StatCard label="Humidity" value={latest.humidity} unit="%" color="text-blue-500" />
               <StatCard label="Pressure" value={latest.atmospheric_pressure} unit=" hPa" color="text-purple-500" />
               <StatCard label="Wind Speed" value={latest.wind_speed} unit=" m/s" color="text-cyan-500" />
@@ -426,7 +426,7 @@ export const DataLoggerDetailPage = () => {
                 {latest && (
                   <>
                     <br /><br />
-                    <b>Temperature:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
+                    <b>Amb Temp:</b> {latest.temperature?.toFixed(1) ?? '—'}°C<br />
                     <b>Humidity:</b> {latest.humidity?.toFixed(1) ?? '—'}%<br />
                     <b>Last seen:</b> {timeAgo(latest.timestamp)}
                   </>

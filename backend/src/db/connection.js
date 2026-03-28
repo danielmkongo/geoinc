@@ -12,6 +12,8 @@ const dbPath = process.env.DB_PATH || path.join(__dirname, '../../incubator.db')
 
 const db = new Database(dbPath);
 
+// Enable WAL mode for better read/write concurrency
+db.pragma('journal_mode = WAL');
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 

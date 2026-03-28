@@ -79,7 +79,10 @@ router.get('/historical/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
     const { startDate, endDate, limit = 100, offset = 0 } = req.query;
 
-    let query = 'SELECT * FROM readings WHERE device_id = ?';
+    let query = `SELECT device_id, temperature, humidity, soil_temperature,
+                        pump_status, egg_rotation_motor_status, exhaust_fan_status,
+                        inlet_fan_status, radiator_fan_status, timestamp
+                 FROM readings WHERE device_id = ?`;
     const params = [deviceId];
 
     if (startDate) {
@@ -97,15 +100,8 @@ router.get('/historical/:deviceId', async (req, res) => {
     params.push(parseInt(offset, 10));
 
     const result = await db.query(query, params);
-    const countResult = await db.query(
-      'SELECT COUNT(*) as total FROM readings WHERE device_id = ?',
-      [deviceId]
-    );
 
-    res.json({
-      count: parseInt(countResult.rows[0]?.total ?? 0, 10),
-      readings: result.rows
-    });
+    res.json({ readings: result.rows });
   } catch (error) {
     console.error('❌ Get historical readings error:', error);
     res.status(500).json({ error: 'Failed to fetch readings' });
