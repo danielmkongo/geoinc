@@ -7,6 +7,9 @@ export const useDeviceStore = create((set) => ({
     temperature: null,
     humidity: null,
     water_temperature: null,
+    dht22_temperature: null,
+    dht22_humidity: null,
+    sensor_mode: null,
     pump_status: null,
     egg_rotation_motor_status: null,
     exhaust_fan_status: null,
@@ -27,6 +30,7 @@ export const useDeviceStore = create((set) => ({
   lastUpdate: null,
   serverLastUpdate: null, // server-stamped last_update from devices table (UTC-safe)
   firmwareVersion: null,  // firmware version last reported by device via request_commands
+  sensorMode: null,       // active sensor mode: 'sht45' | 'dht22' | 'both' — from device heartbeat/ack
   manualOverride: false,  // persisted across sessions via DB
   isLoadingReadings: false,
   incubationStart: null,
@@ -91,6 +95,10 @@ export const useDeviceStore = create((set) => ({
 
   setFirmwareVersion: (version) => {
     set({ firmwareVersion: version });
+  },
+
+  setSensorMode: (mode) => {
+    set({ sensorMode: mode });
   },
 
   setManualOverride: (value) => {

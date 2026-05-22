@@ -136,6 +136,26 @@ router.post('/override-off/:deviceId', async (req, res) => {
   }
 });
 
+// Set sensor mode — publishes to device/sensor_mode; device acks via device/sensor_mode_ack
+router.post('/sensor-mode/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { sensor_mode } = req.body;
+
+    if (!['sht45', 'dht22', 'both'].includes(sensor_mode)) {
+      return res.status(400).json({ error: 'sensor_mode must be one of: sht45, dht22, both' });
+    }
+
+    const { mqttService } = await import('../server.js');
+    await mqttService.publishSensorMode(sensor_mode);
+
+    res.json({ status: 'sent', sensor_mode });
+  } catch (error) {
+    console.error('Set sensor mode error:', error);
+    res.status(500).json({ error: 'Failed to publish sensor mode command' });
+  }
+});
+
 // Get command history
 router.get('/history/:deviceId', async (req, res) => {
   try {

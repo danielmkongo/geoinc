@@ -14,6 +14,7 @@ export const useDeviceData = (deviceId) => {
   const setIncubationStart = useDeviceStore((state) => state.setIncubationStart);
   const setServerLastUpdate = useDeviceStore((state) => state.setServerLastUpdate);
   const setFirmwareVersion = useDeviceStore((state) => state.setFirmwareVersion);
+  const setSensorMode = useDeviceStore((state) => state.setSensorMode);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,6 +49,7 @@ export const useDeviceData = (deviceId) => {
         if (dev?.incubation_start) setIncubationStart(dev.incubation_start);
         if (dev?.last_update) setServerLastUpdate(dev.last_update);
         if (dev?.firmware_version) setFirmwareVersion(dev.firmware_version);
+        if (dev?.sensor_mode) setSensorMode(dev.sensor_mode);
 
         setError(null);
       } catch (err) {
@@ -59,7 +61,7 @@ export const useDeviceData = (deviceId) => {
     };
 
     fetchData();
-  }, [deviceId, updateReading, setTemperatureHistory, setHumidityHistory, setWaterTemperatureHistory, updateActuatorState, setIncubationStart, setServerLastUpdate, setFirmwareVersion]);
+  }, [deviceId, updateReading, setTemperatureHistory, setHumidityHistory, setWaterTemperatureHistory, updateActuatorState, setIncubationStart, setServerLastUpdate, setFirmwareVersion, setSensorMode]);
 
   return { loading, error, currentReading };
 };

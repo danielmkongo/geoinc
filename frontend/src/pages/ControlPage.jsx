@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   MdPowerSettingsNew, MdHistory, MdThermostat, MdWaterDrop,
-  MdGrass, MdCircle, MdBolt, MdMemory,
+  MdGrass, MdCircle, MdBolt, MdMemory, MdSensors, MdCheck,
 } from 'react-icons/md';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CommandCenter } from '../components/CommandCenter';
@@ -10,6 +10,7 @@ import { useDeviceData } from '../hooks/useDeviceData';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceStore } from '../store/deviceStore';
 import { isWithinMinutes, formatRelativeTime } from '../utils/formatters';
+import { commandsAPI } from '../services/api';
 
 const tabs = [
   { id: 'control', label: 'Control Panel', icon: MdPowerSettingsNew },
@@ -22,8 +23,11 @@ export const ControlPage = () => {
   const serverLastUpdate = useDeviceStore((s) => s.serverLastUpdate);
   const lastUpdate       = useDeviceStore((s) => s.lastUpdate);
   const firmwareVersion  = useDeviceStore((s) => s.firmwareVersion);
+  const sensorMode       = useDeviceStore((s) => s.sensorMode);
   const { loading }      = useDeviceData(deviceId);
   const [activeTab, setActiveTab] = useState('control');
+  const [pendingMode, setPendingMode] = useState(null);
+  const [modeStatus, setModeStatus] = useState(null); // 'sending' | 'sent' | 'error'
 
   useWebSocket();
 
@@ -36,6 +40,20 @@ export const ControlPage = () => {
   const humidNormal  = humidity    != null && humidity    >= 40 && humidity    <= 70;
   const isOnline     = isWithinMinutes(serverLastUpdate, 20) ||
     (lastUpdate && (Date.now() - new Date(lastUpdate).getTime()) < 20 * 60 * 1000);
+
+  const sendSensorMode = async (mode) => {
+    if (!isOnline || modeStatus === 'sending') return;
+    setPendingMode(mode);
+    setModeStatus('sending');
+    try {
+      await commandsAPI.setSensorMode(deviceId, mode);
+      setModeStatus('sent');
+      setTimeout(() => setModeStatus(null), 3000);
+    } catch {
+      setModeStatus('error');
+      setTimeout(() => setModeStatus(null), 3000);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 lg:p-8 pt-16 lg:pt-8">
@@ -190,6 +208,65 @@ export const ControlPage = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Sensor mode card */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <MdSensors size={14} className="text-gray-400 dark:text-slate-500" />
+                  <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Sensor Mode</p>
+                </div>
+
+                {/* Active mode badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Active</span>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/50 uppercase">
+                    {sensorMode ?? '—'}
+                  </span>
+                </div>
+
+                {/* Mode selector buttons */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'sht45', label: 'SHT45', desc: 'Primary' },
+                    { id: 'dht22', label: 'DHT22', desc: 'Backup' },
+                    { id: 'both',  label: 'Both',  desc: 'Dual' },
+                  ].map(({ id, label, desc }) => {
+                    const isActive  = sensorMode === id;
+                    const isSending = modeStatus === 'sending' && pendingMode === id;
+                    const isConfirmed = modeStatus === 'sent' && pendingMode === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => sendSensorMode(id)}
+                        disabled={!isOnline || modeStatus === 'sending'}
+                        className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl py-2.5 px-1 text-xs font-semibold border transition-all duration-200
+                          ${isActive
+                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                            : 'bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300'
+                          }
+                          disabled:opacity-40 disabled:cursor-not-allowed`}
+                      >
+                        {isConfirmed
+                          ? <MdCheck size={14} className="text-emerald-400" />
+                          : <span className={isSending ? 'opacity-50' : ''}>{label}</span>
+                        }
+                        <span className={`text-[9px] font-normal ${isActive ? 'text-indigo-200' : 'text-gray-400 dark:text-slate-500'}`}>{desc}</span>
+                        {isSending && (
+                          <span className="absolute inset-0 rounded-xl border-2 border-indigo-400 animate-pulse" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Status feedback */}
+                {modeStatus === 'error' && (
+                  <p className="mt-2 text-xs text-red-500 dark:text-red-400 text-center">Failed to send — device may be offline</p>
+                )}
+                {!isOnline && (
+                  <p className="mt-2 text-xs text-gray-400 dark:text-slate-500 text-center">Device offline — cannot change mode</p>
+                )}
               </div>
             </div>
 

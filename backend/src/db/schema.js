@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS devices (
   description TEXT,
   online INTEGER DEFAULT 0,
   last_update DATETIME,
+  sensor_mode TEXT DEFAULT 'sht45',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -23,6 +24,9 @@ CREATE TABLE IF NOT EXISTS readings (
   exhaust_fan_status INTEGER,
   inlet_fan_status INTEGER,
   radiator_fan_status INTEGER,
+  dht22_temperature REAL,
+  dht22_humidity REAL,
+  sensor_mode TEXT,
   timestamp DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(device_id, timestamp)

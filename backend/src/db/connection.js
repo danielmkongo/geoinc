@@ -40,6 +40,11 @@ const migrations = [
   'ALTER TABLE alerts ADD COLUMN acknowledged_by TEXT',
   // Manual override persistence
   'ALTER TABLE devices ADD COLUMN manual_override INTEGER DEFAULT 0',
+  // Sensor mode tracking (sht45 | dht22 | both)
+  'ALTER TABLE devices ADD COLUMN sensor_mode TEXT DEFAULT \'sht45\'',
+  'ALTER TABLE readings ADD COLUMN dht22_temperature REAL',
+  'ALTER TABLE readings ADD COLUMN dht22_humidity REAL',
+  'ALTER TABLE readings ADD COLUMN sensor_mode TEXT',
 ];
 for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* column already exists — skip */ }

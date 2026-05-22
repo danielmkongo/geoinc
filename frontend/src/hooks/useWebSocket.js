@@ -17,6 +17,7 @@ export const useWebSocket = () => {
   const updateActuatorState = useDeviceStore((state) => state.updateActuatorState);
   const setServerLastUpdate = useDeviceStore((state) => state.setServerLastUpdate);
   const setFirmwareVersion = useDeviceStore((state) => state.setFirmwareVersion);
+  const setSensorMode = useDeviceStore((state) => state.setSensorMode);
   const setManualOverride = useDeviceStore((state) => state.setManualOverride);
   const addAlert = useAlertStore((state) => state.addAlert);
 
@@ -50,6 +51,10 @@ export const useWebSocket = () => {
 
         case 'device_version':
           setFirmwareVersion(message.version);
+          break;
+
+        case 'sensor_mode_update':
+          setSensorMode(message.sensor_mode);
           break;
 
         case 'override_update':
@@ -119,6 +124,7 @@ export const useWebSocket = () => {
     updateActuatorState,
     setServerLastUpdate,
     setFirmwareVersion,
+    setSensorMode,
     setManualOverride,
     addAlert,
     setWSConnected,

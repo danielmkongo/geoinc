@@ -64,6 +64,8 @@ export const commandsAPI = {
     apiClient.post(`/commands/override-off/${deviceId}`),
   getHistory: (deviceId, limit = 50) =>
     apiClient.get(`/commands/history/${deviceId}?limit=${limit}`),
+  setSensorMode: (deviceId, mode) =>
+    apiClient.post(`/commands/sensor-mode/${deviceId}`, { sensor_mode: mode }),
 };
 
 export const alertsAPI = {

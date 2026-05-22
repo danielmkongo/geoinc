@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, name, mqtt_topic_prefix, description, online, last_update, latitude, longitude, location_name, created_at FROM devices ORDER BY created_at DESC'
+      'SELECT id, name, mqtt_topic_prefix, description, online, last_update, sensor_mode, latitude, longitude, location_name, created_at FROM devices ORDER BY created_at DESC'
     );
 
     res.json({ devices: result.rows });

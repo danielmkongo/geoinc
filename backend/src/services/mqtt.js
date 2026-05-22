@@ -63,7 +63,7 @@ export class MQTTService {
 
   subscribeToTopics() {
     const deviceTopic = process.env.DEVICE_TOPIC_PREFIX;
-    
+
     this.client.subscribe([
       `${deviceTopic}/telemetry/data`,
       `${deviceTopic}/device/status`,
@@ -71,7 +71,8 @@ export class MQTTService {
       `${deviceTopic}/system/alerts`,
       `${deviceTopic}/system/errors`,
       `${deviceTopic}/actuator/feedback`,
-      `${deviceTopic}/device/request_commands`
+      `${deviceTopic}/device/request_commands`,
+      `${deviceTopic}/device/sensor_mode_ack`,
     ], (error) => {
       if (error) {
         console.error('Subscription error:', error);
@@ -98,6 +99,10 @@ export class MQTTService {
         await this.handleAlert(data);
       } else if (topic.includes('device/request_commands')) {
         await this.handleCommandRequest(data);
+      } else if (topic.includes('device/online')) {
+        await this.handleDeviceOnline(data);
+      } else if (topic.includes('device/sensor_mode_ack')) {
+        await this.handleSensorModeAck(data);
       }
       
       // Broadcast to WebSocket clients
@@ -116,56 +121,102 @@ export class MQTTService {
 
   async handleSensorData(data) {
     try {
-      // Insert reading into database
-      const { temperature, humidity, water_temperature,
-              pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
-              timestamp } = data;
+      const {
+        temperature, humidity, water_temperature,
+        dht22_temperature, dht22_humidity, sensor_mode,
+        pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
+        timestamp,
+      } = data;
 
       await db.query(
         `INSERT OR IGNORE INTO readings
            (device_id, temperature, humidity, water_temperature,
+            dht22_temperature, dht22_humidity, sensor_mode,
             pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
             timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [1, temperature, humidity, water_temperature ?? null,
+         dht22_temperature ?? null, dht22_humidity ?? null, sensor_mode ?? null,
          pump_status ?? null, egg_rotation_motor_status ?? null,
          exhaust_fan_status ?? null, inlet_fan_status ?? null, radiator_fan_status ?? null,
          new Date(timestamp * 1000).toISOString()]
       );
 
-      // Update device last_update
-      await db.query(
-        'UPDATE devices SET last_update = CURRENT_TIMESTAMP, online = 1 WHERE id = ?',
-        [1]
-      );
+      // Keep devices.sensor_mode in sync with what was actually used
+      if (sensor_mode) {
+        await db.query(
+          'UPDATE devices SET last_update = CURRENT_TIMESTAMP, online = 1, sensor_mode = ? WHERE id = 1',
+          [sensor_mode]
+        );
+      } else {
+        await db.query(
+          'UPDATE devices SET last_update = CURRENT_TIMESTAMP, online = 1 WHERE id = 1'
+        );
+      }
 
       // Check for alert thresholds
-      if (temperature !== null) {
+      if (temperature != null) {
         const tempHigh = temperature > 39.0;
-        const tempLow = temperature < 36.0;
-
+        const tempLow  = temperature < 36.0;
         if (tempHigh || tempLow) {
-          const alertType = tempHigh ? 'TEMPERATURE_HIGH' : 'TEMPERATURE_LOW';
-          const threshold = tempHigh ? 39.0 : 36.0;
-          
-          await this.createAlert(1, alertType, temperature, threshold);
+          await this.createAlert(1, tempHigh ? 'TEMPERATURE_HIGH' : 'TEMPERATURE_LOW', temperature, tempHigh ? 39.0 : 36.0);
         }
       }
 
-      console.log('Sensor data stored:', { temperature, humidity, water_temperature });
+      console.log('Sensor data stored:', { temperature, humidity, water_temperature, sensor_mode });
 
-      // Broadcast to WebSocket clients
       if (this.wsManager) {
         this.wsManager.broadcast({
           type: 'sensor_update',
           deviceId: 1,
-          data: { temperature, humidity, water_temperature,
-                  pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status },
-          timestamp: new Date()
+          data: {
+            temperature, humidity, water_temperature,
+            dht22_temperature: dht22_temperature ?? null,
+            dht22_humidity: dht22_humidity ?? null,
+            sensor_mode: sensor_mode ?? null,
+            pump_status, egg_rotation_motor_status, exhaust_fan_status, inlet_fan_status, radiator_fan_status,
+          },
+          timestamp: new Date(),
         });
       }
     } catch (error) {
       console.error('Sensor data handling error:', error);
+    }
+  }
+
+  async handleDeviceOnline(data) {
+    try {
+      const { sensor_mode } = data;
+      if (sensor_mode) {
+        await db.query(
+          'UPDATE devices SET sensor_mode = ? WHERE id = 1',
+          [sensor_mode]
+        );
+        if (this.wsManager) {
+          this.wsManager.broadcast({ type: 'sensor_mode_update', sensor_mode });
+        }
+      }
+    } catch (error) {
+      console.error('handleDeviceOnline error:', error);
+    }
+  }
+
+  async handleSensorModeAck(data) {
+    try {
+      const { sensor_mode } = data;
+      if (!sensor_mode) return;
+
+      await db.query(
+        'UPDATE devices SET sensor_mode = ? WHERE id = 1',
+        [sensor_mode]
+      );
+      console.log('Sensor mode ack received:', sensor_mode);
+
+      if (this.wsManager) {
+        this.wsManager.broadcast({ type: 'sensor_mode_update', sensor_mode });
+      }
+    } catch (error) {
+      console.error('handleSensorModeAck error:', error);
     }
   }
 
@@ -355,6 +406,23 @@ export class MQTTService {
         if (error) reject(error);
         else {
           console.log('Incubation reset published to device, start_ts:', startTimestamp);
+          resolve();
+        }
+      });
+    });
+  }
+
+  publishSensorMode(mode) {
+    if (!this.client || !this.isConnected) {
+      return Promise.reject(new Error('MQTT broker not connected'));
+    }
+    const topic = `${process.env.DEVICE_TOPIC_PREFIX}/device/sensor_mode`;
+    const payload = JSON.stringify({ sensor_mode: mode });
+    return new Promise((resolve, reject) => {
+      this.client.publish(topic, payload, { qos: 1 }, (error) => {
+        if (error) reject(error);
+        else {
+          console.log('Sensor mode command published:', mode);
           resolve();
         }
       });
