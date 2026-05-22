@@ -84,6 +84,9 @@ export class MQTTService {
 
   async handleMessage(topic, message) {
     try {
+      if (message.length >= 255) {
+        console.warn(`MQTT payload truncation likely — ${message.length} bytes on ${topic}. Check device MQTT buffer size.`);
+      }
       const data = JSON.parse(message);
 
       // Any message from the device means it's online — update last_update
